@@ -1,0 +1,23 @@
+# .NET build outputs
+[Bb]in/
+[Oo]bj/
+[Aa]rtifacts/
+
+# Visual Studio workspace and user files
+.vs/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+# Test and coverage outputs
+TestResults/
+coverage/
+
+# NuGet package outputs
+*.nupkg
+*.snupkg
+packages/
+
+# Common build logs
+*.binlog
