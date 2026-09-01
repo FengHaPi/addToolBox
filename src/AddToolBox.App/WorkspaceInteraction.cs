@@ -229,6 +229,36 @@ internal static class WorkspaceInteraction
             requiredHeight + (SoftBoundaryPadding * 2));
     }
 
+    internal static bool IsLegalLayout(
+        ReadOnlySpan<Rect> tools,
+        double workspaceWidth,
+        double workspaceHeight)
+    {
+        for (var index = 0; index < tools.Length; index++)
+        {
+            var tool = tools[index];
+            var bounds = GetSoftBounds(
+                workspaceWidth,
+                workspaceHeight,
+                tool.Width,
+                tool.Height);
+            if (!IsWithinBounds(tool.Location, bounds))
+            {
+                return false;
+            }
+
+            for (var otherIndex = index + 1; otherIndex < tools.Length; otherIndex++)
+            {
+                if (RectanglesOverlap(tool, tools[otherIndex]))
+                {
+                    return false;
+                }
+            }
+        }
+
+        return true;
+    }
+
     private static void ClampToolsToBounds(
         Span<Rect> tools,
         SoftWorkspaceBounds bounds)
@@ -240,6 +270,14 @@ internal static class WorkspaceInteraction
             tool.Y = Math.Clamp(tool.Y, bounds.MinimumY, bounds.MaximumY);
             tools[index] = tool;
         }
+    }
+
+    private static bool IsWithinBounds(Point position, SoftWorkspaceBounds bounds)
+    {
+        return position.X >= bounds.MinimumX
+            && position.X <= bounds.MaximumX
+            && position.Y >= bounds.MinimumY
+            && position.Y <= bounds.MaximumY;
     }
 
     private static bool ResolveResizeOverlap(

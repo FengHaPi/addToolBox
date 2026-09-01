@@ -2,6 +2,7 @@
 using System.Text;
 using System.Runtime.InteropServices;
 using System.Windows;
+using System.Windows.Automation;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Interop;
@@ -29,6 +30,11 @@ public partial class MainWindow : Window
     private const double LongPressMoveTolerance = 5;
     private const int CollisionImpactMilliseconds = 50;
     private const int CollisionFeedbackMilliseconds = 180;
+    private const int BoundaryImpactMilliseconds = 70;
+    private const int BoundaryFeedbackMilliseconds = 220;
+    private const int BoundaryReleaseMilliseconds = 120;
+    private const double BoundaryPeakOpacity = 0.52;
+    private const double BoundarySustainedOpacity = 0.12;
     private const double ToolHoverOpacity = 0.58;
     private const double ToolHoverOffset = -1;
     private const int DragTransitionMilliseconds = 120;
@@ -67,6 +73,13 @@ public partial class MainWindow : Window
         CreateFrozenBrush(Color.FromArgb(118, 132, 153, 184))
     ];
 
+    private static readonly Brush ActiveLayoutControlBackground =
+        CreateFrozenBrush(Color.FromRgb(221, 232, 250));
+    private static readonly Brush ActiveLayoutControlForeground =
+        CreateFrozenBrush(Color.FromRgb(49, 95, 179));
+    private static readonly Brush InactiveLayoutControlForeground =
+        CreateFrozenBrush(Color.FromRgb(80, 84, 91));
+
     private readonly DispatcherTimer _longPressTimer;
     private HashSet<Button> _currentCollisionContacts = new();
     private HashSet<Button> _nextCollisionContacts = new();
@@ -78,6 +91,7 @@ public partial class MainWindow : Window
     private WorkspaceBoundary _currentBoundaryContacts;
     private Button[] _toolButtons = [];
     private Rect[] _resizeToolBounds = [];
+    private Point[] _defaultToolPositions = [];
     private WindowBoundsSnapshot _previousWindowBounds;
     private bool _hasWindowBoundsSnapshot;
     private bool _resizeUpdateScheduled;
@@ -87,6 +101,8 @@ public partial class MainWindow : Window
     private bool _isLongPressPending;
     private bool _isDragging;
     private bool _draggedToolHasSoftPressure;
+
+    private bool IsLayoutLocked { get; set; }
 
     private static readonly SineEase PointerFollowEasing = new()
     {
@@ -124,6 +140,7 @@ public partial class MainWindow : Window
         };
         _longPressTimer.Tick += OnLongPressTimerTick;
         UpdateMaximizeGlyph();
+        UpdateLayoutControlVisuals();
     }
 
     private void OnSourceInitialized(object? sender, EventArgs e)
@@ -142,6 +159,7 @@ public partial class MainWindow : Window
     private void OnWindowLoaded(object sender, RoutedEventArgs e)
     {
         EnsureToolBuffers();
+        CaptureDefaultToolPositions();
         _previousWindowBounds = GetCurrentWindowBounds();
         _hasWindowBoundsSnapshot = true;
         UpdateDynamicMinimumSize();
@@ -328,6 +346,23 @@ public partial class MainWindow : Window
         }
     }
 
+    private void CaptureDefaultToolPositions()
+    {
+        if (_defaultToolPositions.Length == _toolButtons.Length
+            && _toolButtons.Length > 0)
+        {
+            return;
+        }
+
+        _defaultToolPositions = new Point[_toolButtons.Length];
+        for (var index = 0; index < _toolButtons.Length; index++)
+        {
+            _defaultToolPositions[index] = new Point(
+                GetFiniteCanvasCoordinate(Canvas.GetLeft(_toolButtons[index])),
+                GetFiniteCanvasCoordinate(Canvas.GetTop(_toolButtons[index])));
+        }
+    }
+
     private void CaptureToolBounds()
     {
         for (var index = 0; index < _toolButtons.Length; index++)
@@ -348,6 +383,42 @@ public partial class MainWindow : Window
             Canvas.SetLeft(_toolButtons[index], _resizeToolBounds[index].Left);
             Canvas.SetTop(_toolButtons[index], _resizeToolBounds[index].Top);
         }
+    }
+
+    private bool TryResetLayout()
+    {
+        EnsureToolBuffers();
+        if (_defaultToolPositions.Length != _toolButtons.Length)
+        {
+            throw new InvalidOperationException("Default tool positions have not been captured.");
+        }
+
+        var resetBounds = new Rect[_toolButtons.Length];
+        for (var index = 0; index < _toolButtons.Length; index++)
+        {
+            resetBounds[index] = new Rect(
+                _defaultToolPositions[index],
+                new Size(
+                    _toolButtons[index].ActualWidth,
+                    _toolButtons[index].ActualHeight));
+        }
+
+        if (!WorkspaceInteraction.IsLegalLayout(
+                resetBounds,
+                Workspace.ActualWidth,
+                Workspace.ActualHeight))
+        {
+            return false;
+        }
+
+        for (var index = 0; index < _toolButtons.Length; index++)
+        {
+            Canvas.SetLeft(_toolButtons[index], _defaultToolPositions[index].X);
+            Canvas.SetTop(_toolButtons[index], _defaultToolPositions[index].Y);
+        }
+
+        UpdateDynamicMinimumSize();
+        return true;
     }
 
     private WindowBoundsSnapshot GetCurrentWindowBounds()
@@ -434,10 +505,21 @@ public partial class MainWindow : Window
         AnimateToolOffset(toolButton, 0, ToolLeaveMilliseconds);
     }
 
+    private void OnToolButtonContextMenuOpening(object sender, ContextMenuEventArgs e)
+    {
+        e.Handled = true;
+    }
+
     private void OnToolButtonPreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
     {
         var toolButton = (Button)sender;
         CancelLongPressCandidate();
+
+        if (IsLayoutLocked)
+        {
+            e.Handled = true;
+            return;
+        }
 
         _pressedTool = toolButton;
         _pressPointInWorkspace = e.GetPosition(Workspace);
@@ -506,6 +588,12 @@ public partial class MainWindow : Window
     private void OnLongPressTimerTick(object? sender, EventArgs e)
     {
         _longPressTimer.Stop();
+        if (IsLayoutLocked)
+        {
+            CancelLongPressCandidate();
+            return;
+        }
+
         if (!_isLongPressPending || _pressedTool is not { } toolButton)
         {
             return;
@@ -530,7 +618,7 @@ public partial class MainWindow : Window
         }
 
         _isDragging = true;
-        _currentBoundaryContacts = WorkspaceBoundary.None;
+        ClearBoundaryFeedback();
         ClearCollisionContacts();
         Panel.SetZIndex(toolButton, 1);
         toolButton.Effect = new DropShadowEffect
@@ -571,6 +659,11 @@ public partial class MainWindow : Window
 
     private void MoveDraggedTool(Button toolButton, Point pointerPosition)
     {
+        if (IsLayoutLocked)
+        {
+            return;
+        }
+
         _nextCollisionContacts.Clear();
         _collisionForces.Clear();
         _collisionPressures.Clear();
@@ -592,17 +685,26 @@ public partial class MainWindow : Window
             pointerPosition.X - _dragGrabOffset.X,
             pointerPosition.Y - _dragGrabOffset.Y);
         var desiredPosition = bounds.Clamp(rawDesiredPosition);
-        var desiredX = desiredPosition.X;
-        var desiredY = desiredPosition.Y;
-        var resolvedX = ResolveHorizontalMovement(toolButton, currentX, currentY, desiredX);
-        var resolvedY = ResolveVerticalMovement(toolButton, resolvedX, currentY, desiredY);
+
+        var resolvedX = ResolveHorizontalMovement(
+            toolButton,
+            currentX,
+            currentY,
+            desiredPosition.X);
+        var resolvedY = ResolveVerticalMovement(
+            toolButton,
+            resolvedX,
+            currentY,
+            desiredPosition.Y);
 
         Canvas.SetLeft(toolButton, resolvedX);
         Canvas.SetTop(toolButton, resolvedY);
         UpdateBoundaryFeedback(toolButton, rawDesiredPosition, bounds);
         UpdateCollisionFeedback(
             toolButton,
-            new Vector(desiredX - resolvedX, desiredY - resolvedY));
+            new Vector(
+                desiredPosition.X - resolvedX,
+                desiredPosition.Y - resolvedY));
     }
 
     private void EndDragging(Button toolButton)
@@ -616,7 +718,7 @@ public partial class MainWindow : Window
         _isLongPressPending = false;
         _isDragging = false;
         _pressedTool = null;
-        _currentBoundaryContacts = WorkspaceBoundary.None;
+        ClearBoundaryFeedback();
         ClearCollisionContacts();
 
         if (Mouse.Captured == toolButton)
@@ -874,11 +976,22 @@ public partial class MainWindow : Window
     {
         var contacts = WorkspaceInteraction.GetBoundaryContacts(rawDesiredPosition, bounds);
         var enteredContacts = contacts & ~_currentBoundaryContacts;
+        var exitedContacts = _currentBoundaryContacts & ~contacts;
+
+        PositionBoundaryHighlightIfPressed(toolButton, contacts, WorkspaceBoundary.Left);
+        PositionBoundaryHighlightIfPressed(toolButton, contacts, WorkspaceBoundary.Top);
+        PositionBoundaryHighlightIfPressed(toolButton, contacts, WorkspaceBoundary.Right);
+        PositionBoundaryHighlightIfPressed(toolButton, contacts, WorkspaceBoundary.Bottom);
 
         TriggerBoundaryFeedbackIfEntered(toolButton, enteredContacts, WorkspaceBoundary.Left);
         TriggerBoundaryFeedbackIfEntered(toolButton, enteredContacts, WorkspaceBoundary.Top);
         TriggerBoundaryFeedbackIfEntered(toolButton, enteredContacts, WorkspaceBoundary.Right);
         TriggerBoundaryFeedbackIfEntered(toolButton, enteredContacts, WorkspaceBoundary.Bottom);
+
+        ReleaseBoundaryHighlightIfExited(exitedContacts, WorkspaceBoundary.Left);
+        ReleaseBoundaryHighlightIfExited(exitedContacts, WorkspaceBoundary.Top);
+        ReleaseBoundaryHighlightIfExited(exitedContacts, WorkspaceBoundary.Right);
+        ReleaseBoundaryHighlightIfExited(exitedContacts, WorkspaceBoundary.Bottom);
 
         _currentBoundaryContacts = contacts;
     }
@@ -932,7 +1045,7 @@ public partial class MainWindow : Window
     {
         var animation = new DoubleAnimationUsingKeyFrames
         {
-            Duration = TimeSpan.FromMilliseconds(210),
+            Duration = TimeSpan.FromMilliseconds(BoundaryFeedbackMilliseconds),
             FillBehavior = FillBehavior.Stop
         };
         animation.KeyFrames.Add(new LinearDoubleKeyFrame(
@@ -940,13 +1053,13 @@ public partial class MainWindow : Window
             KeyTime.FromTimeSpan(TimeSpan.Zero)));
         animation.KeyFrames.Add(new EasingDoubleKeyFrame(
             impactValue,
-            KeyTime.FromTimeSpan(TimeSpan.FromMilliseconds(55)))
+            KeyTime.FromTimeSpan(TimeSpan.FromMilliseconds(BoundaryImpactMilliseconds)))
         {
             EasingFunction = CollisionImpactEasing
         });
         animation.KeyFrames.Add(new EasingDoubleKeyFrame(
             returnValue,
-            KeyTime.FromTimeSpan(TimeSpan.FromMilliseconds(210)))
+            KeyTime.FromTimeSpan(TimeSpan.FromMilliseconds(BoundaryFeedbackMilliseconds)))
         {
             EasingFunction = CollisionReturnEasing
         });
@@ -955,31 +1068,27 @@ public partial class MainWindow : Window
 
     private void AnimateBoundaryHighlight(WorkspaceBoundary boundary)
     {
-        var highlight = boundary switch
-        {
-            WorkspaceBoundary.Left => LeftBoundaryHighlight,
-            WorkspaceBoundary.Top => TopBoundaryHighlight,
-            WorkspaceBoundary.Right => RightBoundaryHighlight,
-            WorkspaceBoundary.Bottom => BottomBoundaryHighlight,
-            _ => throw new ArgumentOutOfRangeException(nameof(boundary))
-        };
+        var highlight = GetBoundaryHighlight(boundary);
+        var currentOpacity = highlight.Opacity;
+        highlight.BeginAnimation(OpacityProperty, null);
+        highlight.Opacity = BoundarySustainedOpacity;
         var animation = new DoubleAnimationUsingKeyFrames
         {
-            Duration = TimeSpan.FromMilliseconds(230),
+            Duration = TimeSpan.FromMilliseconds(BoundaryFeedbackMilliseconds),
             FillBehavior = FillBehavior.Stop
         };
         animation.KeyFrames.Add(new LinearDoubleKeyFrame(
-            highlight.Opacity,
+            currentOpacity,
             KeyTime.FromTimeSpan(TimeSpan.Zero)));
         animation.KeyFrames.Add(new EasingDoubleKeyFrame(
-            0.3,
-            KeyTime.FromTimeSpan(TimeSpan.FromMilliseconds(55)))
+            BoundaryPeakOpacity,
+            KeyTime.FromTimeSpan(TimeSpan.FromMilliseconds(BoundaryImpactMilliseconds)))
         {
             EasingFunction = CollisionImpactEasing
         });
         animation.KeyFrames.Add(new EasingDoubleKeyFrame(
-            0,
-            KeyTime.FromTimeSpan(TimeSpan.FromMilliseconds(230)))
+            BoundarySustainedOpacity,
+            KeyTime.FromTimeSpan(TimeSpan.FromMilliseconds(BoundaryFeedbackMilliseconds)))
         {
             EasingFunction = CollisionReturnEasing
         });
@@ -989,10 +1098,112 @@ public partial class MainWindow : Window
             HandoffBehavior.SnapshotAndReplace);
     }
 
+    private void PositionBoundaryHighlightIfPressed(
+        Button toolButton,
+        WorkspaceBoundary contacts,
+        WorkspaceBoundary boundary)
+    {
+        if ((contacts & boundary) == 0)
+        {
+            return;
+        }
+
+        PositionBoundaryHighlight(GetBoundaryHighlight(boundary), toolButton, boundary);
+    }
+
+    private void ReleaseBoundaryHighlightIfExited(
+        WorkspaceBoundary exitedContacts,
+        WorkspaceBoundary boundary)
+    {
+        if ((exitedContacts & boundary) == 0)
+        {
+            return;
+        }
+
+        var highlight = GetBoundaryHighlight(boundary);
+        var currentOpacity = highlight.Opacity;
+        highlight.BeginAnimation(OpacityProperty, null);
+        highlight.Opacity = 0;
+        if (currentOpacity <= 0.001)
+        {
+            return;
+        }
+
+        highlight.BeginAnimation(
+            OpacityProperty,
+            new DoubleAnimation
+            {
+                From = currentOpacity,
+                To = 0,
+                Duration = TimeSpan.FromMilliseconds(BoundaryReleaseMilliseconds),
+                EasingFunction = CollisionReturnEasing,
+                FillBehavior = FillBehavior.Stop
+            },
+            HandoffBehavior.SnapshotAndReplace);
+    }
+
+    private Border GetBoundaryHighlight(WorkspaceBoundary boundary)
+    {
+        return boundary switch
+        {
+            WorkspaceBoundary.Left => LeftBoundaryHighlight,
+            WorkspaceBoundary.Top => TopBoundaryHighlight,
+            WorkspaceBoundary.Right => RightBoundaryHighlight,
+            WorkspaceBoundary.Bottom => BottomBoundaryHighlight,
+            _ => throw new ArgumentOutOfRangeException(nameof(boundary))
+        };
+    }
+
+    private void ClearBoundaryFeedback()
+    {
+        _currentBoundaryContacts = WorkspaceBoundary.None;
+        ClearBoundaryHighlight(LeftBoundaryHighlight);
+        ClearBoundaryHighlight(TopBoundaryHighlight);
+        ClearBoundaryHighlight(RightBoundaryHighlight);
+        ClearBoundaryHighlight(BottomBoundaryHighlight);
+    }
+
+    private static void ClearBoundaryHighlight(Border highlight)
+    {
+        highlight.BeginAnimation(OpacityProperty, null);
+        highlight.Opacity = 0;
+    }
+
+    private void PositionBoundaryHighlight(
+        Border highlight,
+        Button toolButton,
+        WorkspaceBoundary boundary)
+    {
+        if (highlight.RenderTransform is not TranslateTransform offset)
+        {
+            throw new InvalidOperationException("Boundary highlight requires a TranslateTransform.");
+        }
+
+        var toolLeft = GetFiniteCanvasCoordinate(Canvas.GetLeft(toolButton));
+        var toolTop = GetFiniteCanvasCoordinate(Canvas.GetTop(toolButton));
+        if (boundary is WorkspaceBoundary.Left or WorkspaceBoundary.Right)
+        {
+            var maximumOffset = Math.Max(0, Workspace.ActualHeight - highlight.Height);
+            offset.X = 0;
+            offset.Y = Math.Clamp(
+                toolTop + (toolButton.ActualHeight / 2) - (highlight.Height / 2),
+                0,
+                maximumOffset);
+            return;
+        }
+
+        var maximumHorizontalOffset = Math.Max(0, Workspace.ActualWidth - highlight.Width);
+        offset.X = Math.Clamp(
+            toolLeft + (toolButton.ActualWidth / 2) - (highlight.Width / 2),
+            0,
+            maximumHorizontalOffset);
+        offset.Y = 0;
+    }
+
     private void SpawnBoundaryParticles(Button toolButton, WorkspaceBoundary boundary)
     {
         var random = Random.Shared;
-        var particleCount = random.Next(6, 13);
+        var particleCount = random.Next(7, 15);
         var toolLeft = GetFiniteCanvasCoordinate(Canvas.GetLeft(toolButton));
         var toolTop = GetFiniteCanvasCoordinate(Canvas.GetTop(toolButton));
 
@@ -1641,6 +1852,63 @@ public partial class MainWindow : Window
             ?? throw new InvalidOperationException($"Tool template part '{partName}' is missing.");
     }
 
+    private void OnLayoutLockClick(object sender, RoutedEventArgs e)
+    {
+        var shouldLock = !IsLayoutLocked;
+        if (shouldLock)
+        {
+            CancelActiveToolInteraction();
+        }
+
+        IsLayoutLocked = shouldLock;
+        UpdateLayoutControlVisuals();
+    }
+
+    private void OnResetLayoutClick(object sender, RoutedEventArgs e)
+    {
+        CancelActiveToolInteraction();
+        TryResetLayout();
+    }
+
+    private void CancelActiveToolInteraction()
+    {
+        if (_isDragging && _pressedTool is { } draggedTool)
+        {
+            EndDragging(draggedTool);
+            return;
+        }
+
+        if (_isLongPressPending)
+        {
+            CancelLongPressCandidate();
+            return;
+        }
+
+        _longPressTimer.Stop();
+        _pressedTool = null;
+    }
+
+    private void UpdateLayoutControlVisuals()
+    {
+        LayoutLockGlyph.Text = IsLayoutLocked ? "\uE72E" : "\uE785";
+        LayoutLockButton.ToolTip = IsLayoutLocked ? "解锁布局" : "锁定布局";
+        WorkspaceLockMenuItem.IsChecked = IsLayoutLocked;
+        AutomationProperties.SetName(
+            LayoutLockButton,
+            IsLayoutLocked ? "解锁布局" : "锁定布局");
+        UpdateLayoutControlButtonAppearance(LayoutLockButton, IsLayoutLocked);
+    }
+
+    private static void UpdateLayoutControlButtonAppearance(Button button, bool isActive)
+    {
+        button.Background = isActive
+            ? ActiveLayoutControlBackground
+            : Brushes.Transparent;
+        button.Foreground = isActive
+            ? ActiveLayoutControlForeground
+            : InactiveLayoutControlForeground;
+    }
+
     private void OnMinimizeClick(object sender, RoutedEventArgs e)
     {
         WindowState = WindowState.Minimized;
@@ -1678,7 +1946,7 @@ public partial class MainWindow : Window
         var outerRadius = new CornerRadius(isMaximized ? 0 : 9);
         var innerRadius = new CornerRadius(isMaximized ? 0 : 8);
         WindowSurface.CornerRadius = outerRadius;
-        WindowTopLeftEdge.CornerRadius = innerRadius;
-        WindowBottomRightEdge.CornerRadius = innerRadius;
+        WindowInnerOutline.CornerRadius = innerRadius;
+        WindowEdgeShade.CornerRadius = innerRadius;
     }
 }
