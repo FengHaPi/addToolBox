@@ -8,4 +8,8 @@
     <UseWPF>true</UseWPF>
   </PropertyGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\AddToolBox.Core\AddToolBox.Core.csproj" />
+  </ItemGroup>
+
 </Project>

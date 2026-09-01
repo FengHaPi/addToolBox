@@ -361,7 +361,8 @@
                                   Click="OnResetLayoutClick" />
                     </ContextMenu>
                 </Canvas.ContextMenu>
-                <Button Canvas.Left="58"
+                <Button x:Name="CalculatorToolButton"
+                        Canvas.Left="58"
                         Canvas.Top="38"
                         Style="{StaticResource ToolButtonStyle}">
                     <Viewbox Width="32" Height="32" Stretch="Uniform" IsHitTestVisible="False">
@@ -385,7 +386,8 @@
                     </Viewbox>
                 </Button>
 
-                <Button Canvas.Left="502"
+                <Button x:Name="ImageToolButton"
+                        Canvas.Left="502"
                         Canvas.Top="66"
                         Style="{StaticResource ToolButtonStyle}">
                     <Viewbox Width="32" Height="32" Stretch="Uniform" IsHitTestVisible="False">
@@ -407,7 +409,8 @@
                     </Viewbox>
                 </Button>
 
-                <Button Canvas.Left="318"
+                <Button x:Name="FileToolButton"
+                        Canvas.Left="318"
                         Canvas.Top="184"
                         Style="{StaticResource ToolButtonStyle}">
                     <Viewbox Width="32" Height="32" Stretch="Uniform" IsHitTestVisible="False">
@@ -429,7 +432,8 @@
                     </Viewbox>
                 </Button>
 
-                <Button Canvas.Left="126"
+                <Button x:Name="ColorToolButton"
+                        Canvas.Left="126"
                         Canvas.Top="334"
                         Style="{StaticResource ToolButtonStyle}">
                     <Viewbox Width="32" Height="32" Stretch="Uniform" IsHitTestVisible="False">
@@ -445,7 +449,8 @@
                     </Viewbox>
                 </Button>
 
-                <Button Canvas.Left="618"
+                <Button x:Name="TextToolButton"
+                        Canvas.Left="618"
                         Canvas.Top="306"
                         Style="{StaticResource ToolButtonStyle}">
                     <Viewbox Width="32" Height="32" Stretch="Uniform" IsHitTestVisible="False">

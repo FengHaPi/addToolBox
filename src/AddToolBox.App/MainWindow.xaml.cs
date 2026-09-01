@@ -1,6 +1,7 @@
 ﻿using System.Collections.Generic;
 using System.Text;
 using System.Runtime.InteropServices;
+using AddToolBox.Core;
 using System.Windows;
 using System.Windows.Automation;
 using System.Windows.Controls;
@@ -81,6 +82,7 @@ public partial class MainWindow : Window
         CreateFrozenBrush(Color.FromRgb(80, 84, 91));
 
     private readonly DispatcherTimer _longPressTimer;
+    private readonly IReadOnlyDictionary<FrameworkElement, ToolDefinition> _toolDefinitionsByVisual;
     private HashSet<Button> _currentCollisionContacts = new();
     private HashSet<Button> _nextCollisionContacts = new();
     private readonly Dictionary<Button, Vector> _collisionForces = new();
@@ -134,6 +136,15 @@ public partial class MainWindow : Window
     public MainWindow()
     {
         InitializeComponent();
+        _toolDefinitionsByVisual = new Dictionary<FrameworkElement, ToolDefinition>
+        {
+            [CalculatorToolButton] = BuiltInTools.Calculator,
+            [ImageToolButton] = BuiltInTools.Image,
+            [FileToolButton] = BuiltInTools.File,
+            [TextToolButton] = BuiltInTools.Text,
+            [ColorToolButton] = BuiltInTools.Color
+        };
+        ValidateToolIdentityMapping();
         _longPressTimer = new DispatcherTimer(DispatcherPriority.Input)
         {
             Interval = TimeSpan.FromMilliseconds(LongPressMilliseconds)
@@ -342,6 +353,72 @@ public partial class MainWindow : Window
             if (child is Button toolButton)
             {
                 _toolButtons[toolIndex++] = toolButton;
+            }
+        }
+    }
+
+    private void ValidateToolIdentityMapping()
+    {
+        var uniqueIds = new HashSet<string>(StringComparer.Ordinal);
+        foreach (var definition in BuiltInTools.All)
+        {
+            if (string.IsNullOrWhiteSpace(definition.Id))
+            {
+                throw new InvalidOperationException("Built-in tool IDs must not be empty.");
+            }
+
+            if (!uniqueIds.Add(definition.Id))
+            {
+                throw new InvalidOperationException(
+                    $"Built-in tool ID '{definition.Id}' is duplicated.");
+            }
+        }
+
+        if (_toolDefinitionsByVisual.Count != BuiltInTools.All.Count)
+        {
+            throw new InvalidOperationException(
+                "Every built-in tool must map to exactly one workspace visual.");
+        }
+
+        var workspaceToolVisuals = new HashSet<FrameworkElement>();
+        foreach (UIElement child in Workspace.Children)
+        {
+            if (child is Button toolButton)
+            {
+                workspaceToolVisuals.Add(toolButton);
+            }
+        }
+
+        if (workspaceToolVisuals.Count != _toolDefinitionsByVisual.Count)
+        {
+            throw new InvalidOperationException(
+                "Every workspace tool visual must have exactly one tool identity.");
+        }
+
+        foreach (var visual in workspaceToolVisuals)
+        {
+            if (!_toolDefinitionsByVisual.ContainsKey(visual))
+            {
+                throw new InvalidOperationException(
+                    $"Workspace tool visual '{visual.Name}' has no tool identity.");
+            }
+        }
+
+        foreach (var definition in BuiltInTools.All)
+        {
+            var mappingCount = 0;
+            foreach (var mappedDefinition in _toolDefinitionsByVisual.Values)
+            {
+                if (ReferenceEquals(mappedDefinition, definition))
+                {
+                    mappingCount++;
+                }
+            }
+
+            if (mappingCount != 1)
+            {
+                throw new InvalidOperationException(
+                    $"Built-in tool '{definition.Id}' must map to exactly one workspace visual.");
             }
         }
     }
