@@ -83,6 +83,7 @@ public partial class MainWindow : Window
 
     private readonly DispatcherTimer _longPressTimer;
     private readonly IReadOnlyDictionary<FrameworkElement, ToolDefinition> _toolDefinitionsByVisual;
+    private ToolDefinition? _activeTool;
     private HashSet<Button> _currentCollisionContacts = new();
     private HashSet<Button> _nextCollisionContacts = new();
     private readonly Dictionary<Button, Vector> _collisionForces = new();
@@ -101,6 +102,7 @@ public partial class MainWindow : Window
     private int _lastResizeIterations;
     private int _lastResizeIterationLimit;
     private bool _isLongPressPending;
+    private bool _isToolClickCandidate;
     private bool _isDragging;
     private bool _draggedToolHasSoftPressure;
 
@@ -553,14 +555,15 @@ public partial class MainWindow : Window
 
         AnimatePointerPosition(toolButton, e.GetPosition(toolButton));
 
-        if (_isLongPressPending && ReferenceEquals(_pressedTool, toolButton))
+        if ((_isLongPressPending || _isToolClickCandidate)
+            && ReferenceEquals(_pressedTool, toolButton))
         {
             var currentPoint = e.GetPosition(Workspace);
             var delta = currentPoint - _pressPointInWorkspace;
             if ((delta.X * delta.X) + (delta.Y * delta.Y)
                 > LongPressMoveTolerance * LongPressMoveTolerance)
             {
-                CancelLongPressCandidate();
+                CancelToolPressCandidate();
             }
         }
     }
@@ -573,9 +576,10 @@ public partial class MainWindow : Window
             return;
         }
 
-        if (_isLongPressPending && ReferenceEquals(_pressedTool, toolButton))
+        if ((_isLongPressPending || _isToolClickCandidate)
+            && ReferenceEquals(_pressedTool, toolButton))
         {
-            CancelLongPressCandidate();
+            CancelToolPressCandidate();
         }
 
         AnimateToolOpacity(toolButton, 0, ToolLeaveMilliseconds);
@@ -590,17 +594,12 @@ public partial class MainWindow : Window
     private void OnToolButtonPreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
     {
         var toolButton = (Button)sender;
-        CancelLongPressCandidate();
-
-        if (IsLayoutLocked)
-        {
-            e.Handled = true;
-            return;
-        }
+        CancelToolPressCandidate();
 
         _pressedTool = toolButton;
         _pressPointInWorkspace = e.GetPosition(Workspace);
         _isLongPressPending = true;
+        _isToolClickCandidate = true;
         _longPressTimer.Start();
 
         AnimateToolOffset(toolButton, 0, ToolPressedMilliseconds);
@@ -621,7 +620,20 @@ public partial class MainWindow : Window
         }
         else
         {
-            CancelLongPressCandidate();
+            ToolDefinition? toolToOpen = null;
+            if (_isToolClickCandidate)
+            {
+                toolToOpen = _toolDefinitionsByVisual.TryGetValue(toolButton, out var toolDefinition)
+                    ? toolDefinition
+                    : throw new InvalidOperationException(
+                        $"Tool visual '{toolButton.Name}' has no ToolDefinition mapping.");
+            }
+
+            CancelToolPressCandidate();
+            if (toolToOpen is not null)
+            {
+                OpenTool(toolToOpen);
+            }
         }
 
         e.Handled = true;
@@ -641,7 +653,7 @@ public partial class MainWindow : Window
         }
         else
         {
-            CancelLongPressCandidate();
+            CancelToolPressCandidate();
         }
     }
 
@@ -658,7 +670,7 @@ public partial class MainWindow : Window
         }
         else
         {
-            CancelLongPressCandidate();
+            CancelToolPressCandidate();
         }
     }
 
@@ -667,7 +679,7 @@ public partial class MainWindow : Window
         _longPressTimer.Stop();
         if (IsLayoutLocked)
         {
-            CancelLongPressCandidate();
+            CancelToolPressCandidate();
             return;
         }
 
@@ -678,19 +690,16 @@ public partial class MainWindow : Window
 
         if (Mouse.LeftButton != MouseButtonState.Pressed)
         {
-            CancelLongPressCandidate();
+            CancelToolPressCandidate();
             return;
         }
 
         _isLongPressPending = false;
+        _isToolClickCandidate = false;
         _dragGrabOffset = Mouse.GetPosition(toolButton);
         if (!toolButton.CaptureMouse())
         {
-            _pressedTool = null;
-            AnimateToolOffset(
-                toolButton,
-                toolButton.IsMouseOver ? ToolHoverOffset : 0,
-                DragTransitionMilliseconds);
+            CancelToolPressCandidate();
             return;
         }
 
@@ -713,25 +722,54 @@ public partial class MainWindow : Window
         SpawnPickupParticles(toolButton);
     }
 
-    private void CancelLongPressCandidate()
+    private void CancelToolPressCandidate()
     {
-        if (!_isLongPressPending)
-        {
-            return;
-        }
-
         _longPressTimer.Stop();
         _isLongPressPending = false;
+        _isToolClickCandidate = false;
         var toolButton = _pressedTool;
         _pressedTool = null;
 
         if (toolButton is not null)
         {
+            if (Mouse.Captured == toolButton)
+            {
+                toolButton.ReleaseMouseCapture();
+            }
+
             AnimateToolOffset(
                 toolButton,
                 toolButton.IsMouseOver ? ToolHoverOffset : 0,
                 ToolPressedMilliseconds);
         }
+    }
+
+    private void OpenTool(ToolDefinition toolDefinition)
+    {
+        CancelActiveToolInteraction();
+        ClearBoundaryFeedback();
+        ClearCollisionContacts();
+
+        if (Workspace.ContextMenu is { IsOpen: true } contextMenu)
+        {
+            contextMenu.IsOpen = false;
+        }
+
+        _activeTool = toolDefinition;
+        ToolHostTitle.Text = _activeTool.DisplayName;
+        WorkspaceView.IsHitTestVisible = false;
+        WorkspaceView.Visibility = Visibility.Hidden;
+        ToolHostView.Visibility = Visibility.Visible;
+    }
+
+    private void OnToolHostBackClick(object sender, RoutedEventArgs e)
+    {
+        _activeTool = null;
+        ToolHostTitle.Text = string.Empty;
+        ToolHostView.Visibility = Visibility.Hidden;
+        WorkspaceView.Visibility = Visibility.Visible;
+        WorkspaceView.IsHitTestVisible = true;
+        UpdateDynamicMinimumSize();
     }
 
     private void MoveDraggedTool(Button toolButton, Point pointerPosition)
@@ -1963,9 +2001,9 @@ public partial class MainWindow : Window
             return;
         }
 
-        if (_isLongPressPending)
+        if (_isLongPressPending || _isToolClickCandidate)
         {
-            CancelLongPressCandidate();
+            CancelToolPressCandidate();
             return;
         }
 

@@ -486,6 +486,7 @@
             </Grid>
 
             <Grid Grid.Row="1">
+                <Grid x:Name="WorkspaceView">
                 <Canvas x:Name="Workspace"
                         Background="Transparent"
                         HorizontalAlignment="Stretch"
@@ -733,6 +734,47 @@
                         </LinearGradientBrush>
                     </Border.OpacityMask>
                 </Border>
+                </Grid>
+
+                <Grid x:Name="ToolHostView"
+                      Background="Transparent"
+                      Visibility="Hidden">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="56" />
+                        <RowDefinition Height="*" />
+                    </Grid.RowDefinitions>
+
+                    <Grid Grid.Row="0" Margin="18,8,18,0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <Button Width="40"
+                                Height="40"
+                                Style="{StaticResource TitleButtonStyle}"
+                                AutomationProperties.Name="返回工作区"
+                                Click="OnToolHostBackClick">
+                            <TextBlock FontFamily="Segoe Fluent Icons"
+                                       FontSize="14"
+                                       Text="&#xE72B;" />
+                        </Button>
+                        <TextBlock x:Name="ToolHostTitle"
+                                   Grid.Column="1"
+                                   Margin="12,0,0,0"
+                                   VerticalAlignment="Center"
+                                   FontSize="17"
+                                   FontWeight="SemiBold"
+                                   Foreground="#343941" />
+                    </Grid>
+
+                    <TextBlock Grid.Row="1"
+                               Margin="34,30"
+                               HorizontalAlignment="Left"
+                               VerticalAlignment="Top"
+                               FontSize="14"
+                               Foreground="#7A8390"
+                               Text="该工具当前为原型入口" />
+                </Grid>
             </Grid>
 
             <Border x:Name="WindowInnerOutline"
