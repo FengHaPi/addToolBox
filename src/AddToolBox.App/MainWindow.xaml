@@ -16,7 +16,11 @@
         Background="#F6F7F9"
         FontFamily="Segoe UI"
         SourceInitialized="OnSourceInitialized"
+        Loaded="OnWindowLoaded"
+        LocationChanged="OnWindowLocationChanged"
+        SizeChanged="OnWindowSizeChanged"
         StateChanged="OnWindowStateChanged"
+        Deactivated="OnWindowDeactivated"
         UseLayoutRounding="True"
         SnapsToDevicePixels="True">
 
@@ -89,6 +93,12 @@
         </Style>
 
         <Style x:Key="ToolButtonStyle" TargetType="Button">
+            <EventSetter Event="MouseEnter" Handler="OnToolButtonMouseEnter" />
+            <EventSetter Event="PreviewMouseMove" Handler="OnToolButtonMouseMove" />
+            <EventSetter Event="MouseLeave" Handler="OnToolButtonMouseLeave" />
+            <EventSetter Event="PreviewMouseLeftButtonDown" Handler="OnToolButtonPreviewMouseLeftButtonDown" />
+            <EventSetter Event="PreviewMouseLeftButtonUp" Handler="OnToolButtonPreviewMouseLeftButtonUp" />
+            <EventSetter Event="LostMouseCapture" Handler="OnToolButtonLostMouseCapture" />
             <Setter Property="Width" Value="64" />
             <Setter Property="Height" Value="64" />
             <Setter Property="Padding" Value="0" />
@@ -111,15 +121,63 @@
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="Button">
-                        <Border x:Name="ToolSurface"
-                                Background="{TemplateBinding Background}"
-                                BorderBrush="{TemplateBinding BorderBrush}"
-                                BorderThickness="{TemplateBinding BorderThickness}"
-                                CornerRadius="16"
-                                SnapsToDevicePixels="True">
-                            <ContentPresenter HorizontalAlignment="Center"
-                                              VerticalAlignment="Center" />
-                        </Border>
+                        <Grid x:Name="ToolPickupVisual">
+                            <Grid.RenderTransform>
+                                <TransformGroup>
+                                    <ScaleTransform x:Name="ToolPickupScaleTransform"
+                                                    CenterX="32"
+                                                    CenterY="32"
+                                                    ScaleX="1"
+                                                    ScaleY="1" />
+                                    <RotateTransform x:Name="ToolWobbleTransform"
+                                                     CenterX="32"
+                                                     CenterY="32" />
+                                    <TranslateTransform x:Name="ToolLiftTransform" />
+                                </TransformGroup>
+                            </Grid.RenderTransform>
+                            <Grid>
+                                <Border x:Name="ToolSurface"
+                                        Background="{TemplateBinding Background}"
+                                        BorderBrush="{TemplateBinding BorderBrush}"
+                                        BorderThickness="{TemplateBinding BorderThickness}"
+                                        CornerRadius="16"
+                                        RenderTransformOrigin="0.5,0.5"
+                                        SnapsToDevicePixels="True">
+                                    <Border.RenderTransform>
+                                        <ScaleTransform x:Name="ToolSoftBodyScaleTransform"
+                                                        ScaleX="1"
+                                                        ScaleY="1" />
+                                    </Border.RenderTransform>
+                                    <Border x:Name="PointerHighlight"
+                                            CornerRadius="16"
+                                            IsHitTestVisible="False"
+                                            Opacity="0">
+                                        <Border.Background>
+                                            <RadialGradientBrush Center="0.5,0.5"
+                                                                 GradientOrigin="0.5,0.5"
+                                                                 RadiusX="0.78"
+                                                                 RadiusY="0.78">
+                                                <GradientStop Offset="0" Color="#365B7FD6" />
+                                                <GradientStop Offset="0.48" Color="#145B7FD6" />
+                                                <GradientStop Offset="1" Color="#005B7FD6" />
+                                            </RadialGradientBrush>
+                                        </Border.Background>
+                                    </Border>
+                                </Border>
+                                <Grid x:Name="ToolIconVisual"
+                                      RenderTransformOrigin="0.5,0.5"
+                                      IsHitTestVisible="False">
+                                    <Grid.RenderTransform>
+                                        <ScaleTransform x:Name="ToolIconScaleTransform"
+                                                        ScaleX="1"
+                                                        ScaleY="1" />
+                                    </Grid.RenderTransform>
+                                    <ContentPresenter HorizontalAlignment="Center"
+                                                      VerticalAlignment="Center"
+                                                      IsHitTestVisible="False" />
+                                </Grid>
+                            </Grid>
+                        </Grid>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
                                 <Setter TargetName="ToolSurface" Property="Background" Value="#F8FAFD" />
@@ -145,10 +203,17 @@
         </Style>
     </Window.Resources>
 
-    <Border Background="#F6F7F9"
-            BorderBrush="#E2E6EC"
+    <Border x:Name="WindowSurface"
+            BorderBrush="#DCE1E8"
             BorderThickness="1"
             CornerRadius="9">
+        <Border.Background>
+            <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
+                <GradientStop Offset="0" Color="#FAFBFC" />
+                <GradientStop Offset="0.38" Color="#F6F7F9" />
+                <GradientStop Offset="1" Color="#F3F5F8" />
+            </LinearGradientBrush>
+        </Border.Background>
         <Grid>
             <Grid.RowDefinitions>
                 <RowDefinition Height="48" />
@@ -228,11 +293,10 @@
                 </StackPanel>
             </Grid>
 
-            <Canvas Grid.Row="1"
-                    Width="760"
-                    Height="450"
-                    HorizontalAlignment="Center"
-                    VerticalAlignment="Center">
+            <Grid Grid.Row="1">
+                <Canvas x:Name="Workspace"
+                        HorizontalAlignment="Stretch"
+                        VerticalAlignment="Stretch">
                 <Button Canvas.Left="58"
                         Canvas.Top="38"
                         Style="{StaticResource ToolButtonStyle}">
@@ -332,7 +396,72 @@
                         </Canvas>
                     </Viewbox>
                 </Button>
-            </Canvas>
+                </Canvas>
+
+                <Border x:Name="LeftBoundaryHighlight"
+                        Width="18"
+                        HorizontalAlignment="Left"
+                        IsHitTestVisible="False"
+                        Opacity="0">
+                    <Border.Background>
+                        <LinearGradientBrush StartPoint="0,0" EndPoint="1,0">
+                            <GradientStop Offset="0" Color="#665B7FD6" />
+                            <GradientStop Offset="1" Color="#005B7FD6" />
+                        </LinearGradientBrush>
+                    </Border.Background>
+                </Border>
+                <Border x:Name="TopBoundaryHighlight"
+                        Height="18"
+                        VerticalAlignment="Top"
+                        IsHitTestVisible="False"
+                        Opacity="0">
+                    <Border.Background>
+                        <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
+                            <GradientStop Offset="0" Color="#665B7FD6" />
+                            <GradientStop Offset="1" Color="#005B7FD6" />
+                        </LinearGradientBrush>
+                    </Border.Background>
+                </Border>
+                <Border x:Name="RightBoundaryHighlight"
+                        Width="18"
+                        HorizontalAlignment="Right"
+                        IsHitTestVisible="False"
+                        Opacity="0">
+                    <Border.Background>
+                        <LinearGradientBrush StartPoint="1,0" EndPoint="0,0">
+                            <GradientStop Offset="0" Color="#665B7FD6" />
+                            <GradientStop Offset="1" Color="#005B7FD6" />
+                        </LinearGradientBrush>
+                    </Border.Background>
+                </Border>
+                <Border x:Name="BottomBoundaryHighlight"
+                        Height="18"
+                        VerticalAlignment="Bottom"
+                        IsHitTestVisible="False"
+                        Opacity="0">
+                    <Border.Background>
+                        <LinearGradientBrush StartPoint="0,1" EndPoint="0,0">
+                            <GradientStop Offset="0" Color="#665B7FD6" />
+                            <GradientStop Offset="1" Color="#005B7FD6" />
+                        </LinearGradientBrush>
+                    </Border.Background>
+                </Border>
+            </Grid>
+
+            <Border x:Name="WindowTopLeftEdge"
+                    Grid.RowSpan="2"
+                    Margin="1"
+                    BorderBrush="#8AFFFFFF"
+                    BorderThickness="1,1,0,0"
+                    CornerRadius="8"
+                    IsHitTestVisible="False" />
+            <Border x:Name="WindowBottomRightEdge"
+                    Grid.RowSpan="2"
+                    Margin="1"
+                    BorderBrush="#465B6778"
+                    BorderThickness="0,0,1,1"
+                    CornerRadius="8"
+                    IsHitTestVisible="False" />
         </Grid>
     </Border>
 </Window>
