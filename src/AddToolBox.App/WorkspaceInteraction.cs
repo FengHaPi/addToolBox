@@ -45,6 +45,7 @@ internal readonly record struct ResizeConstraintResult(
 internal static class WorkspaceInteraction
 {
     internal const double SoftBoundaryPadding = 18;
+    internal const double BoundaryContactEpsilon = 0.75;
 
     internal static SoftWorkspaceBounds GetSoftBounds(
         double workspaceWidth,
@@ -66,25 +67,30 @@ internal static class WorkspaceInteraction
             maximumY);
     }
 
-    internal static WorkspaceBoundary GetBoundaryContacts(
-        Point desiredPosition,
+    internal static WorkspaceBoundary GetPressedBoundaryContacts(
+        Point actualResolvedPosition,
+        Point rawDesiredPosition,
         SoftWorkspaceBounds bounds)
     {
         var contacts = WorkspaceBoundary.None;
-        if (desiredPosition.X < bounds.MinimumX)
+        if (actualResolvedPosition.X <= bounds.MinimumX + BoundaryContactEpsilon
+            && rawDesiredPosition.X < bounds.MinimumX)
         {
             contacts |= WorkspaceBoundary.Left;
         }
-        else if (desiredPosition.X > bounds.MaximumX)
+        else if (actualResolvedPosition.X >= bounds.MaximumX - BoundaryContactEpsilon
+                 && rawDesiredPosition.X > bounds.MaximumX)
         {
             contacts |= WorkspaceBoundary.Right;
         }
 
-        if (desiredPosition.Y < bounds.MinimumY)
+        if (actualResolvedPosition.Y <= bounds.MinimumY + BoundaryContactEpsilon
+            && rawDesiredPosition.Y < bounds.MinimumY)
         {
             contacts |= WorkspaceBoundary.Top;
         }
-        else if (desiredPosition.Y > bounds.MaximumY)
+        else if (actualResolvedPosition.Y >= bounds.MaximumY - BoundaryContactEpsilon
+                 && rawDesiredPosition.Y > bounds.MaximumY)
         {
             contacts |= WorkspaceBoundary.Bottom;
         }

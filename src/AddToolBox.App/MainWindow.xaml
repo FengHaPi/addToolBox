@@ -92,6 +92,150 @@
             </Setter>
         </Style>
 
+        <Style x:Key="WorkspaceContextMenuStyle" TargetType="ContextMenu">
+            <Setter Property="MinWidth" Value="190" />
+            <Setter Property="Padding" Value="0" />
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="FontFamily" Value="Segoe UI" />
+            <Setter Property="FontSize" Value="13" />
+            <Setter Property="Foreground" Value="#30343B" />
+            <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+            <Setter Property="HasDropShadow" Value="False" />
+            <Setter Property="OverridesDefaultStyle" Value="True" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ContextMenu">
+                        <Grid Margin="8" Background="Transparent">
+                            <Border Background="#F8FAFD"
+                                    BorderBrush="#DDE3EC"
+                                    BorderThickness="1"
+                                    CornerRadius="11"
+                                    Padding="6"
+                                    SnapsToDevicePixels="True">
+                                <Border.Effect>
+                                    <DropShadowEffect BlurRadius="14"
+                                                      Direction="270"
+                                                      ShadowDepth="2"
+                                                      Color="#34455D"
+                                                      Opacity="0.13" />
+                                </Border.Effect>
+                                <StackPanel IsItemsHost="True"
+                                            KeyboardNavigation.DirectionalNavigation="Cycle" />
+                            </Border>
+                        </Grid>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="WorkspaceMenuItemStyle" TargetType="MenuItem">
+            <Setter Property="Height" Value="36" />
+            <Setter Property="Padding" Value="12,0" />
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="Foreground" Value="#30343B" />
+            <Setter Property="Cursor" Value="Arrow" />
+            <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+            <Setter Property="OverridesDefaultStyle" Value="True" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="MenuItem">
+                        <Border x:Name="ItemSurface"
+                                Padding="{TemplateBinding Padding}"
+                                Background="{TemplateBinding Background}"
+                                CornerRadius="8"
+                                SnapsToDevicePixels="True">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="18" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+                                <Path x:Name="CheckGlyph"
+                                      Width="11"
+                                      Height="9"
+                                      HorizontalAlignment="Left"
+                                      VerticalAlignment="Center"
+                                      Data="M 1,4 L 4,7 L 10,1"
+                                      Fill="Transparent"
+                                      Stroke="{TemplateBinding Foreground}"
+                                      StrokeThickness="1.6"
+                                      StrokeStartLineCap="Round"
+                                      StrokeEndLineCap="Round"
+                                      StrokeLineJoin="Round"
+                                      Visibility="Collapsed" />
+                                <ContentPresenter Grid.Column="1"
+                                                  Margin="2,0,0,0"
+                                                  VerticalAlignment="Center"
+                                                  ContentSource="Header"
+                                                  RecognizesAccessKey="True" />
+                            </Grid>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsHighlighted" Value="True">
+                                <Setter TargetName="ItemSurface"
+                                        Property="Background"
+                                        Value="#EAF1FB" />
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="ItemSurface"
+                                        Property="Background"
+                                        Value="#DDE8F7" />
+                            </Trigger>
+                            <Trigger Property="IsChecked" Value="True">
+                                <Setter TargetName="CheckGlyph"
+                                        Property="Visibility"
+                                        Value="Visible" />
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter TargetName="ItemSurface"
+                                        Property="Opacity"
+                                        Value="0.48" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="WorkspaceMenuHeaderStyle" TargetType="MenuItem">
+            <Setter Property="Height" Value="30" />
+            <Setter Property="Padding" Value="12,5,12,3" />
+            <Setter Property="Foreground" Value="#737C89" />
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="Focusable" Value="False" />
+            <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+            <Setter Property="OverridesDefaultStyle" Value="True" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="MenuItem">
+                        <Border Padding="{TemplateBinding Padding}"
+                                Background="Transparent">
+                            <ContentPresenter VerticalAlignment="Center"
+                                              ContentSource="Header"
+                                              RecognizesAccessKey="True" />
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="WorkspaceMenuSeparatorStyle" TargetType="Separator">
+            <Setter Property="Height" Value="9" />
+            <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Separator">
+                        <Border Height="1"
+                                Margin="8,4"
+                                VerticalAlignment="Center"
+                                Background="#E5EAF1"
+                                SnapsToDevicePixels="True" />
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
         <Style x:Key="ToolButtonStyle" TargetType="Button">
             <EventSetter Event="MouseEnter" Handler="OnToolButtonMouseEnter" />
             <EventSetter Event="PreviewMouseMove" Handler="OnToolButtonMouseMove" />
@@ -347,17 +491,19 @@
                         HorizontalAlignment="Stretch"
                         VerticalAlignment="Stretch">
                 <Canvas.ContextMenu>
-                    <ContextMenu>
+                    <ContextMenu Style="{StaticResource WorkspaceContextMenuStyle}">
                         <MenuItem Header="布局"
-                                  FontWeight="SemiBold"
+                                  Style="{StaticResource WorkspaceMenuHeaderStyle}"
                                   IsEnabled="False" />
-                        <Separator />
+                        <Separator Style="{StaticResource WorkspaceMenuSeparatorStyle}" />
                         <MenuItem x:Name="WorkspaceLockMenuItem"
                                   Header="锁定布局"
+                                  Style="{StaticResource WorkspaceMenuItemStyle}"
                                   IsCheckable="True"
                                   Click="OnLayoutLockClick" />
-                        <Separator />
+                        <Separator Style="{StaticResource WorkspaceMenuSeparatorStyle}" />
                         <MenuItem Header="恢复默认布局"
+                                  Style="{StaticResource WorkspaceMenuItemStyle}"
                                   Click="OnResetLayoutClick" />
                     </ContextMenu>
                 </Canvas.ContextMenu>

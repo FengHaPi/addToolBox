@@ -776,7 +776,11 @@ public partial class MainWindow : Window
 
         Canvas.SetLeft(toolButton, resolvedX);
         Canvas.SetTop(toolButton, resolvedY);
-        UpdateBoundaryFeedback(toolButton, rawDesiredPosition, bounds);
+        UpdateBoundaryFeedback(
+            toolButton,
+            rawDesiredPosition,
+            new Point(resolvedX, resolvedY),
+            bounds);
         UpdateCollisionFeedback(
             toolButton,
             new Vector(
@@ -1049,9 +1053,13 @@ public partial class MainWindow : Window
     private void UpdateBoundaryFeedback(
         Button toolButton,
         Point rawDesiredPosition,
+        Point actualResolvedPosition,
         SoftWorkspaceBounds bounds)
     {
-        var contacts = WorkspaceInteraction.GetBoundaryContacts(rawDesiredPosition, bounds);
+        var contacts = WorkspaceInteraction.GetPressedBoundaryContacts(
+            actualResolvedPosition,
+            rawDesiredPosition,
+            bounds);
         var enteredContacts = contacts & ~_currentBoundaryContacts;
         var exitedContacts = _currentBoundaryContacts & ~contacts;
 
