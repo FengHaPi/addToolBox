@@ -2,27 +2,33 @@
 
 记录对用户和开发者有意义的变化，不逐条复制 Git Log。详细原因、研究数据和证据边界见 [PROJECT_HISTORY](docs/PROJECT_HISTORY.md)。
 
-当前没有 Git Tag；这里的 V0.1 是开发里程碑名称，不代表正式 Release。以下状态截至 **2026-09-03**：已提交基线为 `eb8dadd3`，World Canvas 属于既有未提交工作树；静态核实不等同于运行验收。正式 Release 后再按真实版本归档。
+截至 **2026-09-03**，World Canvas Host Baseline 已通过 build、模型与空画布检查、实际窗口启动验证，并由项目所有者确认人工验收通过，作为进入 Module 开发前的正式 Host 里程碑。它不是正式用户 Release，不创建 Tag；正式 Release 后再按真实版本归档。
 
 ## Unreleased
 
 ### Added
 
-- 建立简洁 CHANGELOG、详细 PROJECT_HISTORY，以及 [AGENTS Change Documentation](AGENTS.md#23-change-documentation) 同任务更新制度（本轮文档/治理修改，未提交）。
-- World Canvas 未提交实现：Tool 世界坐标、WorldLayer 相机投影、中键 Pan、以鼠标位置为锚点的滚轮 Zoom、Reset View、Dynamic WorldExtent 扩张及按交互结束触发的 Lazy Shrink。代码已接入，交互验收尚未在本轮执行。
+- 建立简洁 CHANGELOG、详细 PROJECT_HISTORY，以及 [AGENTS Change Documentation](AGENTS.md#23-change-documentation) 同任务更新制度，已独立提交：`4b26a0a docs: establish project history and change documentation policy`。
+- World Canvas：Tool 世界坐标与 WorldLayer 相机投影；默认空 Workspace 合法。
+- Middle Mouse Pan：空白或对象上的中键拖动移动 Viewport。
+- Mouse Wheel Zoom：以鼠标位置为锚点，范围 0.25–3.00。
+- Reset View：恢复初始 Camera 中心与 1.0 Zoom，不修改 Tool 或 Layout Lock。
+- Dynamic WorldExtent：逻辑 Rect 的按需扩张与交互结束后的 Lazy Shrink，保护 Viewport 和全部 Item bounds，不生成空白区域 Visual。
 
 ### Changed
 
-- 未提交工作树将 Window Resize 改为更新 Viewport / 相机投影；不再通过原 Resize 调用链重新写入所有 Tool 位置。Tool 离开 Viewport 是合法状态。
+- Reset Layout 与 Reset View 完全独立：Reset Layout 只恢复 Tool 默认世界位置，保留 Camera 中心和 Zoom，允许默认 Tool 仍在视口外；无 Item 时同样可安全执行。
+- Window Resize 只更新 Viewport 可见范围和相机投影，不改 Camera 中心或 Tool WorldPosition。Tool 离屏是合法状态。
 - Workspace 方向转为可扩展的 World Canvas。Widget、Note、Information Card 等非 Tool 内容仍为 Planned / Current direction，尚无公共 WorkspaceItem 抽象。
 
 ### Removed
 
-- 未提交工作树已移除旧 `MainWindow` 的 `ScheduleAdaptiveResize` / `ApplyAdaptiveResize` 调用链和依赖 Tool 排布的动态最小窗口尺寸更新；相关研究求解器源码仍保留，未完成提交与运行验收。
+- 删除当前产品的 Automatic Compaction / 自动 Resize 重排调用链，以及依赖 Tool 排布的动态最小窗口尺寸更新；保留已提交的 Project1D / Legacy Solve2D 研究基础。
+- 删除五个 prototype built-in test tiles（calculator / image / file / text / color）的视觉实例、初始位置、硬编码映射及原型提示，移除 Core 中无运行用途的 BuiltInTools 测试列表；保留 ToolDefinition 与 Tool Host / Back 基础。
 
 ### Deprecated / Retired
 
-- **Automatic Compaction — Decision: retiring / removal in progress。** 产品决策为 `Retired from core Resize behavior`：自动收拢与长期 World Canvas 语义冲突。当前入口移除状态如上；不宣称所有研究源码已经删除。未来可评估用户主动触发的 Arrange / Auto layout。
+- **Automatic Compaction — Retired from core Resize behavior。** 自动收拢与长期 World Canvas 语义冲突，当前产品路径已移除，研究基础继续保留。未来用户主动触发的 Arrange / Auto layout 仍只是可评估方向。
 
 ## Historical Milestones
 

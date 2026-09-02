@@ -17,7 +17,6 @@
         FontFamily="Segoe UI"
         SourceInitialized="OnSourceInitialized"
         Loaded="OnWindowLoaded"
-        LocationChanged="OnWindowLocationChanged"
         SizeChanged="OnWindowSizeChanged"
         StateChanged="OnWindowStateChanged"
         Deactivated="OnWindowDeactivated"
@@ -449,6 +448,19 @@
                             Margin="0,0,6,0"
                             VerticalAlignment="Center"
                             Orientation="Horizontal">
+                    <Button x:Name="ResetViewButton"
+                            Style="{StaticResource TitleButtonStyle}"
+                            AutomationProperties.Name="回到初始视图"
+                            ToolTip="回到初始视图"
+                            Click="OnResetViewClick">
+                        <Path Width="18" Height="18"
+                              Data="M 2,9 L 9,2 L 16,9 M 4,8 L 4,16 L 8,16 L 8,11 L 11,11 L 11,16 L 14,16 L 14,8"
+                              Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
+                              StrokeThickness="1.5"
+                              StrokeStartLineCap="Round"
+                              StrokeEndLineCap="Round"
+                              StrokeLineJoin="Round" />
+                    </Button>
                     <Button x:Name="LayoutLockButton"
                             Style="{StaticResource TitleButtonStyle}"
                             AutomationProperties.Name="锁定布局"
@@ -489,6 +501,7 @@
                 <Grid x:Name="WorkspaceView">
                 <Canvas x:Name="Workspace"
                         Background="Transparent"
+                        ClipToBounds="True"
                         HorizontalAlignment="Stretch"
                         VerticalAlignment="Stretch">
                 <Canvas.ContextMenu>
@@ -508,110 +521,13 @@
                                   Click="OnResetLayoutClick" />
                     </ContextMenu>
                 </Canvas.ContextMenu>
-                <Button x:Name="CalculatorToolButton"
-                        Canvas.Left="58"
-                        Canvas.Top="38"
-                        Style="{StaticResource ToolButtonStyle}">
-                    <Viewbox Width="32" Height="32" Stretch="Uniform" IsHitTestVisible="False">
-                        <Canvas Width="32" Height="32">
-                            <Border Canvas.Left="5" Canvas.Top="3"
-                                    Width="22" Height="26"
-                                    BorderBrush="#5B7FD6"
-                                    BorderThickness="1.7"
-                                    CornerRadius="4" />
-                            <Rectangle Canvas.Left="9" Canvas.Top="7"
-                                       Width="14" Height="5"
-                                       Fill="#E9EFFB"
-                                       RadiusX="1.5" RadiusY="1.5" />
-                            <Ellipse Canvas.Left="9" Canvas.Top="17" Width="3" Height="3" Fill="#5B7FD6" />
-                            <Ellipse Canvas.Left="14.5" Canvas.Top="17" Width="3" Height="3" Fill="#5B7FD6" />
-                            <Ellipse Canvas.Left="20" Canvas.Top="17" Width="3" Height="3" Fill="#5B7FD6" />
-                            <Ellipse Canvas.Left="9" Canvas.Top="23" Width="3" Height="3" Fill="#5B7FD6" />
-                            <Ellipse Canvas.Left="14.5" Canvas.Top="23" Width="3" Height="3" Fill="#5B7FD6" />
-                            <Ellipse Canvas.Left="20" Canvas.Top="23" Width="3" Height="3" Fill="#5B7FD6" />
-                        </Canvas>
-                    </Viewbox>
-                </Button>
-
-                <Button x:Name="ImageToolButton"
-                        Canvas.Left="502"
-                        Canvas.Top="66"
-                        Style="{StaticResource ToolButtonStyle}">
-                    <Viewbox Width="32" Height="32" Stretch="Uniform" IsHitTestVisible="False">
-                        <Canvas Width="32" Height="32">
-                            <Border Canvas.Left="3" Canvas.Top="5"
-                                    Width="26" Height="22"
-                                    BorderBrush="#5B7FD6"
-                                    BorderThickness="1.7"
-                                    CornerRadius="4" />
-                            <Ellipse Canvas.Left="8" Canvas.Top="10" Width="4.5" Height="4.5" Fill="#AFC5F2" />
-                            <Path Data="M 6,24 L 12,17 L 16,21 L 21,15 L 27,23"
-                                  Fill="Transparent"
-                                  Stroke="#5B7FD6"
-                                  StrokeThickness="1.7"
-                                  StrokeStartLineCap="Round"
-                                  StrokeEndLineCap="Round"
-                                  StrokeLineJoin="Round" />
-                        </Canvas>
-                    </Viewbox>
-                </Button>
-
-                <Button x:Name="FileToolButton"
-                        Canvas.Left="318"
-                        Canvas.Top="184"
-                        Style="{StaticResource ToolButtonStyle}">
-                    <Viewbox Width="32" Height="32" Stretch="Uniform" IsHitTestVisible="False">
-                        <Canvas Width="32" Height="32">
-                            <Path Data="M 7,3 L 19,3 L 26,10 L 26,29 L 7,29 Z M 19,3 L 19,10 L 26,10"
-                                  Fill="Transparent"
-                                  Stroke="#5B7FD6"
-                                  StrokeThickness="1.7"
-                                  StrokeStartLineCap="Round"
-                                  StrokeEndLineCap="Round"
-                                  StrokeLineJoin="Round" />
-                            <Line X1="11" Y1="17" X2="22" Y2="17"
-                                  Stroke="#5B7FD6" StrokeThickness="1.7"
-                                  StrokeStartLineCap="Round" StrokeEndLineCap="Round" />
-                            <Line X1="11" Y1="22" X2="22" Y2="22"
-                                  Stroke="#5B7FD6" StrokeThickness="1.7"
-                                  StrokeStartLineCap="Round" StrokeEndLineCap="Round" />
-                        </Canvas>
-                    </Viewbox>
-                </Button>
-
-                <Button x:Name="ColorToolButton"
-                        Canvas.Left="126"
-                        Canvas.Top="334"
-                        Style="{StaticResource ToolButtonStyle}">
-                    <Viewbox Width="32" Height="32" Stretch="Uniform" IsHitTestVisible="False">
-                        <Canvas Width="32" Height="32">
-                            <Path Data="M 14,7 L 18,3 L 29,14 L 25,18 M 17,10 L 8,19 L 6,27 L 14,25 L 23,16 M 8,23 L 12,25"
-                                  Fill="Transparent"
-                                  Stroke="#5B7FD6"
-                                  StrokeThickness="1.7"
-                                  StrokeStartLineCap="Round"
-                                  StrokeEndLineCap="Round"
-                                  StrokeLineJoin="Round" />
-                        </Canvas>
-                    </Viewbox>
-                </Button>
-
-                <Button x:Name="TextToolButton"
-                        Canvas.Left="618"
-                        Canvas.Top="306"
-                        Style="{StaticResource ToolButtonStyle}">
-                    <Viewbox Width="32" Height="32" Stretch="Uniform" IsHitTestVisible="False">
-                        <Canvas Width="32" Height="32">
-                            <Path Data="M 5,7 L 27,7 M 16,7 L 16,26 M 10,26 L 22,26"
-                                  Fill="Transparent"
-                                  Stroke="#5B7FD6"
-                                  StrokeThickness="1.8"
-                                  StrokeStartLineCap="Round"
-                                  StrokeEndLineCap="Round"
-                                  StrokeLineJoin="Round" />
-                        </Canvas>
-                    </Viewbox>
-                </Button>
+                <Canvas x:Name="WorldLayer"
+                        UseLayoutRounding="False"
+                        SnapsToDevicePixels="False">
+                    <Canvas.RenderTransform>
+                        <MatrixTransform x:Name="WorldCameraTransform" />
+                    </Canvas.RenderTransform>
+                </Canvas>
                 </Canvas>
 
                 <Border x:Name="LeftBoundaryHighlight"
@@ -767,13 +683,6 @@
                                    Foreground="#343941" />
                     </Grid>
 
-                    <TextBlock Grid.Row="1"
-                               Margin="34,30"
-                               HorizontalAlignment="Left"
-                               VerticalAlignment="Top"
-                               FontSize="14"
-                               Foreground="#7A8390"
-                               Text="该工具当前为原型入口" />
                 </Grid>
             </Grid>
 

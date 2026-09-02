@@ -8,15 +8,15 @@ addToolBox 是 Windows-first、C# / .NET 10 / WPF 的本地模块化工具箱与
 
 ## 记录范围与证据约定
 
-本次回溯记录日：**2026-09-03**。日期是当前记录日期，不是未提交试验的推定发生日期。
+首次回溯记录日：**2026-09-03**。下列证据约定和早期研究叙述保留首次回溯时的范围；后续变化见 World Canvas Host Baseline。日期是记录日期，不是未提交试验的推定发生日期。
 
 - 读取本地 `git log --all` 可达的全部 **11 个提交**，逐个核对 `git show --stat`、`git show --summary`，并检查关键源文件及具体 Diff。仓库不是 shallow clone；本地分支为 `main`，可见的 `origin/main` 与 HEAD 相同，未发现 Tag。本轮没有 fetch，不将本地 remote-tracking ref 宣称为远端实时状态。
 - 最早可核实提交为 `33ae4c5`，Commit Date 为 **2026-08-31 23:28:44 +08:00**。无法为首次提交之前的讨论、试验补造日期。
-- 本次已提交基线 / HEAD：`eb8dadd3d41b6b95c5b8b3a7985d6ad2f9477fa1`。作者日期和提交者日期逐项核对一致；下文采用 Git Commit Date，统一保留 `+08:00`。
+- 首次回溯时的已提交基线 / HEAD：`eb8dadd3d41b6b95c5b8b3a7985d6ad2f9477fa1`。作者日期和提交者日期逐项核对一致；下文采用 Git Commit Date，统一保留 `+08:00`。
 - 读取当前 [AGENTS](../AGENTS.md)、[ARCHITECTURE](../ARCHITECTURE.md)、[README](../README.md)、[基础技术说明](../本地模块化工具箱项目｜基础技术说明.md)，以及当前工作树。任务开始时没有 CHANGELOG 或 docs 目录中的等价历史体系。
 - **Git / Code verified**：提交或源码能证明的内容；本轮静态检查不证明历史 UI 验收或数值扫描已经重跑。
 - **Owner-confirmed**：项目所有者在本次历史回溯需求中明确提供的设计决定、试验过程和数字。无法定位提交时注明 `exact commit not isolated`；相关原始报告、输入、随机种子及独立研究实现未在当前仓库找到，本轮不把它们写成独立复测结果。
-- **Uncommitted / In progress**：任务开始前已有的 World Canvas 修改；具有源码证据，但没有新 Commit、Release 或本轮运行验收。
+- **Uncommitted / In progress**：首次回溯时已有的 World Canvas 修改状态；后续验证和交付状态以 Host Baseline 章节为准，不倒写早期验收结果。
 
 阶段状态使用 Active、Superseded、Retired、Research；这些描述方向或阶段是否仍适用，不代表通过测试。Planned / Current direction 单独表示尚未实现的能力。
 
@@ -109,7 +109,7 @@ Workspace 转为随窗口铺展的自由 Canvas，加入 260 ms 长按 Pickup、
 | `builtin.text` | 文本 | `text` |
 | `builtin.color` | 取色器 | `color` |
 
-这是当前 Host 使用的 Tool Identity。虽然类型在 Core 中声明为 public，它不是已发布的公共 Module SDK Contract；SDK 项目未因此建立插件协议。身份为随后“点开哪个 Tool”提供依据，五个入口不代表五套业务工具已经完成。
+这是当时 Host 建立的 Tool Identity。虽然类型在 Core 中声明为 public，它不是已发布的公共 Module SDK Contract；SDK 项目未因此建立插件协议。身份为随后“点开哪个 Tool”提供依据，五个入口不代表五套业务工具已经完成。Host Baseline 保留 ToolDefinition，移除这份 BuiltInTools 原型数据。
 
 ### 2026-09-01 — 真实边界接触与 Context Menu 修正
 
@@ -121,7 +121,7 @@ Workspace 转为随窗口铺展的自由 Canvas，加入 260 ms 长按 Pickup、
 
 ### 2026-09-01 — Tool Opening V0.1
 
-状态：**Active，原型打开链路**。
+状态：**Host / Back 基础保留；原型入口在 Host Baseline 移除**。
 
 关键 Commit：`1e82548 feat: establish tool opening v0.1`，15:27:54 +08:00。
 
@@ -149,15 +149,31 @@ Workspace 转为随窗口铺展的自由 Canvas，加入 260 ms 长按 Pickup、
 
 **接入边界：** HEAD 的 MainWindow 仍调用 `ConstrainForResize`；`Solve2D` 及其内部 `Project1DCore` 没有成为窗口 Resize 入口。提交证明的是研究实现进入仓库，而不是最终产品 Resize 方案。
 
-### 2026-09-03 — World Canvas 工作树与历史制度建立（记录日）
+### 2026-09-03 — 历史制度建立与 World Canvas 收口起点
 
-状态：**Uncommitted / In progress；产品方向由本轮所有者确认**。
+状态：**文档制度 Active；当时 World Canvas 为 Uncommitted / In progress**。
 
-没有可引用的新 Commit。本轮开始前已有三个已跟踪文件的修改及一个未跟踪文件：`MainWindow.xaml`、`MainWindow.xaml.cs`、`WorkspaceInteraction.cs`、`WorldCanvasState.cs`，均位于 `src/AddToolBox.App/`。
+文档制度已独立提交：`4b26a0a docs: establish project history and change documentation policy`，01:14:51 +08:00。该提交只包含 AGENTS、CHANGELOG、PROJECT_HISTORY，没有生产代码。当时已有三个已跟踪文件的修改及一个未跟踪文件：`MainWindow.xaml`、`MainWindow.xaml.cs`、`WorkspaceInteraction.cs`、`WorldCanvasState.cs`，均位于 `src/AddToolBox.App/`。
 
 源码显示 WorldLayer、世界坐标、Pan / Zoom / Reset View 和 Dynamic WorldExtent 已接入；旧的自动 Resize 重排入口已从 MainWindow 移除，但算法源码保留。详见当前状态章节。本轮没有改动这些生产文件，也不为其补造完成时间或运行验收。
 
 本轮另外建立 CHANGELOG、PROJECT_HISTORY 和 AGENTS 的 Change Documentation 完成条件，让未来重要变更、取消和研究决策在对应任务内留下证据。它是治理文档制度，不是已经安装的自动生成脚本或 CI。
+
+### 2026-09-03 — World Canvas Host Baseline
+
+状态：**Active / 正式 Host Milestone；已实现并通过项目所有者人工验收**。作为进入 Module 开发前的开发主线基线冻结，不是正式用户 Release，不创建 Tag。
+
+主体 Workspace 从 Window Canvas 转为 World Canvas：Tool WorldPosition 是布局真相，Window 是观察世界的 Viewport。Resize、Pan、Zoom 和 WorldExtent 调整不修改 Tool 世界位置；用户拖动提交位置，用户主动 Reset Layout 恢复默认位置。自动收拢从核心 Resize 行为正式退役，不再隐式蜂窝排列或根据 Item BoundingBox 重排。
+
+保留中键 Pan、鼠标锚点 Zoom（0.25–3.00）、Reset View 和大缓存 / Lazy WorldExtent。Reset View 只恢复初始 Camera 中心和 1.0 Zoom；Reset Layout 只恢复 Tool 默认世界位置，二者独立，默认 Tool 离屏也合法。WorldExtent 只管理逻辑 Rect，保护 Viewport 与全部 Item bounds，不创建空白 Chunk Visual，不删除 Item。
+
+五个 calculator / image / file / text / color 测试 Tile 在本阶段真正移除，包括视觉实例、硬编码映射、初始位置、原型提示及 BuiltInTools 数据。保留纯 C# ToolDefinition、通用 Tool 交互和 Tool Host / Back，不以新假 Tool 或大型 Empty State 替代。没有 Module 时默认 World Canvas 为空是合法产品状态。
+
+验证证据：`dotnet build .\AddToolBox.sln` 为 0 warnings / 0 errors；162 项坐标 / WorldExtent 模型检查通过，覆盖 25% / 50% / 100% / 200% / 300% Zoom、空集合与远处 Item 的保护范围；216 项空画布宿主检查通过，覆盖三种窗口尺寸、Camera / Reset / Extent 和零默认 Visual。已启动实际 addToolBox 窗口并核对窗口句柄和响应状态。没有使用自动鼠标模拟；项目所有者随后明确回复“通过，上传”，确认当前 Host 人工验收通过并批准基线上传。模型检查与人工验收作为不同证据分别记录。
+
+README 同步当前能力；ARCHITECTURE 仅修正项目骨架已创建等事实，未重写分层、模块或公共契约原则。既有 Project1D / Legacy Solve2D 研究资产继续保留，以下研究数据与退役原因不改写。
+
+下一主要里程碑：**Module System V0.1**。未来 Workspace 内容主要由独立 Module 提供；本阶段不实现 Module Contract、Loader、Store、Widget Contract、Background Remover 或 Settings。
 
 ## Adaptive Resize Research
 
@@ -254,13 +270,13 @@ PAV / Isotonic-style 1D Projection 将顺序与不重叠约束转为投影问题
 
 产品决策状态：**Retired from core Resize behavior**。
 
-决策来源：**Owner-confirmed design decision; exact commit not isolated.** 当前实现交付状态：**Uncommitted / In progress**。
+决策来源：**Owner-confirmed design decision; exact commit not isolated.** 当前产品路径的移除已在 World Canvas Host Baseline 核实；交付与验收状态见该里程碑章节。
 
 最终认知是：Window 不要求容纳所有内容；Window 只是 Viewport。Item 离开 Viewport 完全合法。长期模型是 **WorldPosition + Viewport + Pan + Zoom + Dynamic WorldExtent**，窗口尺寸变化只改变观察范围，不应擅自移动所有 Item。
 
 Automatic Compaction 的主动退役原因是：经过上述工程研究，自动收拢与 World Canvas 长期产品模型存在语义冲突，其复杂度与 Bug 面积显著高于实际产品收益。这是产品模型的取舍，不把有价值的数值研究概括成“功能失败”。
 
-当前工作树 Diff 可以证明旧 `ScheduleAdaptiveResize` / `ApplyAdaptiveResize` 及动态最小窗口尺寸更新已从 MainWindow 移除，SizeChanged / StateChanged 转而调度相机投影。`ConstrainForResize`、`Project1D`、Axis Group `Solve2D` 等源码仍在 `WorkspaceInteraction.cs`；当前窗口没有调用这些求解入口。因此不能写成“所有收拢/研究源码已经删除”，也不能将尚未提交和运行验收的改动记为正式发布。
+Host 收口源码确认旧 `ScheduleAdaptiveResize` / `ApplyAdaptiveResize` 及动态最小窗口尺寸更新已从 MainWindow 移除，SizeChanged / StateChanged 转而调度相机投影。`ConstrainForResize`、`Project1D`、Axis Group `Solve2D` 等源码仍在 `WorkspaceInteraction.cs`；当前窗口没有调用这些求解入口。因此不能写成“所有收拢/研究源码已经删除”，Host Milestone 也不等同于正式 Release。
 
 ### 研究资产与未来复用
 
@@ -272,20 +288,21 @@ Automatic Compaction 的主动退役原因是：经过上述工程研究，自�
 
 ## 当前 World Canvas 状态与未来边界
 
-以下是 2026-09-03 对既有未提交工作树的静态核实。相关源文件：[MainWindow.xaml](../src/AddToolBox.App/MainWindow.xaml)、[MainWindow.xaml.cs](../src/AddToolBox.App/MainWindow.xaml.cs)、[WorkspaceInteraction.cs](../src/AddToolBox.App/WorkspaceInteraction.cs)，以及未跟踪的 `src/AddToolBox.App/WorldCanvasState.cs`。新增文件暂不建立相对链接，以免单独提交文档后指向尚未入库的文件。
+以下对应 World Canvas Host Baseline，验证范围见上述里程碑。相关源文件：[MainWindow.xaml](../src/AddToolBox.App/MainWindow.xaml)、[MainWindow.xaml.cs](../src/AddToolBox.App/MainWindow.xaml.cs)、[WorkspaceInteraction.cs](../src/AddToolBox.App/WorkspaceInteraction.cs)、[WorldCanvasState.cs](../src/AddToolBox.App/WorldCanvasState.cs)。
 
 | 能力 | 当前证据与状态 |
 | --- | --- |
-| Tool WorldPosition | 已有未提交实现。以 Tool ID 保存 Default / Preferred 世界坐标，WorldLayer 中的坐标用于显示和拖动；本轮未做状态模型或交互验收 |
-| Middle Mouse Pan | 已有事件接入；Pan 改变 ViewportCenterWorld，不移动全部 Tool |
-| Mouse Wheel Zoom | **已实现于未提交工作树**，鼠标锚点缩放，范围 0.25–3.00，每刻度因子 1.10；本轮未运行验收 |
-| Reset View | **已实现于未提交工作树**，按钮恢复中心 `(0, 0)` 和缩放 1.0；与会恢复 Tool 默认位置的 Reset Layout 区分 |
+| Tool WorldPosition | 以 Tool ID 保存 Default / Preferred 世界坐标，WorldLayer 中的坐标用于显示和拖动；保留交互基础，默认原型实例为 0，没有提前加入 Module 内容注册机制 |
+| Middle Mouse Pan | 空白或 Tool 上均从 Workspace 预览事件进入 Pan；不以 Zoom、窗口尺寸、离屏或 Layout Lock 禁用；不修改 Tool WorldPosition |
+| Mouse Wheel Zoom | 鼠标锚点缩放，范围 0.25–3.00，每刻度因子 1.10；模型已检查，默认 1.0 |
+| Reset Layout / Reset View | Layout 只恢复 Tool 默认世界位置，Camera 中心和 Zoom 不变，允许 Tool 离屏；View 只恢复初始中心 `(0, 0)` 和缩放 1.0，不改变 Tool / Default / Lock。零 Item 的两个操作已检查无异常 |
 | Window Resize | SizeChanged → ScheduleCameraProjection → ApplyCameraProjection；初始化完成后更新相机矩阵及 extent，不经旧 Resize 链重写 Tool 布局 |
 | Dynamic WorldExtent | WorldCanvasState 中按需扩张；初始 margin 4096，边缘触发距离 768，扩张步长 4096，均为 world DIP |
-| 大缓存迟滞 / Lazy Shrink | retention margin 3072、最小回收量 4096；Pan 结束、拖动结束和 Reset View 后触发 Shrink，不是每帧追缩 |
+| 大缓存迟滞 / Lazy Shrink | retention margin 3072、最小回收量 4096；Pan 结束、拖动结束、Reset Layout 和 Reset View 后触发 Shrink，不是每帧追缩；两个 Reset 的 extent 检查均不移动 Camera 或 Tool |
 | 空白区域 Visual 成本 | WorldExtent 是 Rect 数据，不为 extent 的空白面积生成额外 Visual；这是源码结构事实，未做整体性能测试，也不宣称所有离屏 Item 已虚拟化 |
 | WorldExtent 回收 | Shrink 将所有传入 Item bounds 与 Viewport bounds 纳入保护范围，只改变 extent，不删除 Item |
 | 交互边界 | Tool 仍有实体碰撞；主动拖动使用换算后的 Viewport 安全边距，允许已离屏 Tool 连续拖回，不因离屏自动全局收拢 |
+| 默认 Workspace / Tool Host | 默认空 Canvas，无五个测试入口及原型提示；Tool Host / Back 基础保留，下一阶段接入真实 Module 内容 |
 
 未来 World Canvas 可能承载 Note、Text widget、CPU / GPU monitor、Clock、Information Card、Image decoration、Shortcut、Module-provided widget。**当前没有提前建立公共 WorkspaceItem 抽象，也没有这些非 Tool Item 的实现。** 等第一个非 Tool Item 有真实需求和实现范围时，再按治理流程设计。
 
@@ -293,13 +310,13 @@ Automatic Compaction 的主动退役原因是：经过上述工程研究，自�
 
 ## 既有文档差异与证据缺口
 
-- **README 状态滞后：** 仍以 Soft Workspace V0.1 为当前里程碑，将 Layout Lock 列为 Planned，未记录已提交 Tool Identity / Tool Opening；“可选吸附”与所有者确认的退役决定不一致。Adaptive Resize / 动态最小窗口尺寸描述对应旧提交行为，不能解释为当前 World Canvas 工作树状态。
-- **ARCHITECTURE 状态滞后：** 仍写着尚未创建 solution / App / Core / SDK 等；这些项目已由真实 Git 提交建立，Core 也已包含 ToolDefinition。其分层与治理约束仍须遵守。本轮只记录事实差异，按授权保留文件原样，未以本文代替正式架构文档更新。
+- **README 旧差异已同步：** Host Baseline 修正了 Soft Workspace V0.1 仍被列为当前里程碑、Layout Lock / Snap 的错误计划状态，以及旧 Adaptive Resize / 动态最小窗口描述。
+- **ARCHITECTURE 旧事实已同步：** 按所有者本次明确授权，修正 solution / 五项目尚未创建等事实；分层与治理约束保留，没有通过历史文档代替架构审批。
 - **研究可复现性缺口：** 未在当前源码/文档和可达 Git 文件树中找到 Directed / Honeycomb 的实现与扫描原始报告，也没有测试项目。本文保留所有者明确提供的数据与结论；不能补造缺失的完整工程资产。
 
 ## 关键 Commit 索引
 
-此索引用于核对上文证据，不代替演化叙述。覆盖本次全部 11 个可达提交；日期均为 Commit Date `+08:00`。
+此索引用于核对上文证据，不代替演化叙述。保留首次回溯的 11 个提交，并追加已核实的文档制度提交；日期均为 Commit Date `+08:00`。Host 基线自身 Hash 由实际 Git 提交结果确定，不预填。
 
 | 日期与时间 | 完整 Hash | Commit subject |
 | --- | --- | --- |
@@ -314,6 +331,7 @@ Automatic Compaction 的主动退役原因是：经过上述工程研究，自�
 | 2026-09-01 15:27:54 | `1e825484c3657f7496d9858a50537b280b779b9e` | feat: establish tool opening v0.1 |
 | 2026-09-02 11:37:03 | `2710ac12d6d535e58adb072fbe1959f0ac2e2ad0` | refactor: use fixed point 1d resize projection |
 | 2026-09-02 11:58:52 | `eb8dadd3d41b6b95c5b8b3a7985d6ad2f9477fa1` | refactor: add deterministic 2d resize solver |
+| 2026-09-03 01:14:51 | `4b26a0a601ea6f443285d28e47c73e5aa6e708c2` | docs: establish project history and change documentation policy |
 
 ## 后续维护
 

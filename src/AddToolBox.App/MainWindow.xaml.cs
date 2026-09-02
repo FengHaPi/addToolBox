@@ -54,8 +54,6 @@ public partial class MainWindow : Window
     private const int ToolEnterMilliseconds = 160;
     private const int ToolLeaveMilliseconds = 190;
     private const int ToolPressedMilliseconds = 70;
-    private const double ChromeMinimumWidth = 420;
-    private const double ChromeMinimumHeight = 180;
     private const int DwmWindowCornerPreferenceAttribute = 33;
     private const int DwmWindowCornerPreferenceRound = 2;
     private const string MaximizeGlyphText = "\uE922";
@@ -83,6 +81,7 @@ public partial class MainWindow : Window
 
     private readonly DispatcherTimer _longPressTimer;
     private readonly IReadOnlyDictionary<FrameworkElement, ToolDefinition> _toolDefinitionsByVisual;
+    private readonly WorldCanvasState _worldCanvas = new();
     private ToolDefinition? _activeTool;
     private HashSet<Button> _currentCollisionContacts = new();
     private HashSet<Button> _nextCollisionContacts = new();
@@ -90,21 +89,21 @@ public partial class MainWindow : Window
     private readonly Dictionary<Button, Vector> _collisionPressures = new();
     private Button? _pressedTool;
     private Point _pressPointInWorkspace;
-    private Point _dragGrabOffset;
+    private Vector _worldGrabOffset;
     private WorkspaceBoundary _currentBoundaryContacts;
     private Button[] _toolButtons = [];
-    private Rect[] _resizeToolBounds = [];
-    private Point[] _defaultToolPositions = [];
-    private WindowBoundsSnapshot _previousWindowBounds;
-    private bool _hasWindowBoundsSnapshot;
-    private bool _resizeUpdateScheduled;
-    private bool _isApplyingAdaptiveResize;
-    private int _lastResizeIterations;
-    private int _lastResizeIterationLimit;
+    private readonly Dictionary<string, Point> _defaultToolWorldPositions =
+        new(StringComparer.Ordinal);
+    private readonly Dictionary<string, Point> _preferredToolWorldPositions =
+        new(StringComparer.Ordinal);
+    private bool _hasInitialToolPositions;
+    private bool _cameraUpdateScheduled;
     private bool _isLongPressPending;
     private bool _isToolClickCandidate;
     private bool _isDragging;
     private bool _draggedToolHasSoftPressure;
+    private bool _isPanningWorkspace;
+    private Point _workspacePanLastPoint;
 
     private bool IsLayoutLocked { get; set; }
 
@@ -138,20 +137,18 @@ public partial class MainWindow : Window
     public MainWindow()
     {
         InitializeComponent();
-        _toolDefinitionsByVisual = new Dictionary<FrameworkElement, ToolDefinition>
-        {
-            [CalculatorToolButton] = BuiltInTools.Calculator,
-            [ImageToolButton] = BuiltInTools.Image,
-            [FileToolButton] = BuiltInTools.File,
-            [TextToolButton] = BuiltInTools.Text,
-            [ColorToolButton] = BuiltInTools.Color
-        };
+        _toolDefinitionsByVisual = new Dictionary<FrameworkElement, ToolDefinition>();
         ValidateToolIdentityMapping();
         _longPressTimer = new DispatcherTimer(DispatcherPriority.Input)
         {
             Interval = TimeSpan.FromMilliseconds(LongPressMilliseconds)
         };
         _longPressTimer.Tick += OnLongPressTimerTick;
+        Workspace.PreviewMouseDown += OnWorkspacePreviewMouseDown;
+        Workspace.PreviewMouseMove += OnWorkspacePreviewMouseMove;
+        Workspace.PreviewMouseUp += OnWorkspacePreviewMouseUp;
+        Workspace.PreviewMouseWheel += OnWorkspacePreviewMouseWheel;
+        Workspace.LostMouseCapture += OnWorkspaceLostMouseCapture;
         UpdateMaximizeGlyph();
         UpdateLayoutControlVisuals();
     }
@@ -172,169 +169,53 @@ public partial class MainWindow : Window
     private void OnWindowLoaded(object sender, RoutedEventArgs e)
     {
         EnsureToolBuffers();
-        CaptureDefaultToolPositions();
-        _previousWindowBounds = GetCurrentWindowBounds();
-        _hasWindowBoundsSnapshot = true;
-        UpdateDynamicMinimumSize();
-    }
-
-    private void OnWindowLocationChanged(object? sender, EventArgs e)
-    {
-        ScheduleAdaptiveResize();
+        CaptureInitialToolPositions();
+        EnsureWorldCanvasInitialized();
+        ApplyCameraProjection();
     }
 
     private void OnWindowSizeChanged(object sender, SizeChangedEventArgs e)
     {
-        ScheduleAdaptiveResize();
+        ScheduleCameraProjection();
     }
 
-    private void ScheduleAdaptiveResize()
+    private void ScheduleCameraProjection()
     {
         if (!IsLoaded
-            || _isApplyingAdaptiveResize
-            || _resizeUpdateScheduled
+            || _cameraUpdateScheduled
             || WindowState == WindowState.Minimized)
         {
             return;
         }
 
-        _resizeUpdateScheduled = true;
+        _cameraUpdateScheduled = true;
         Dispatcher.BeginInvoke(
             DispatcherPriority.Render,
-            new Action(ApplyAdaptiveResize));
+            new Action(ApplyCameraProjection));
     }
 
-    private void ApplyAdaptiveResize()
+    private void ApplyCameraProjection()
     {
-        _resizeUpdateScheduled = false;
-        if (!IsLoaded || WindowState == WindowState.Minimized)
-        {
-            return;
-        }
-
-        var currentWindowBounds = GetCurrentWindowBounds();
-        if (!_hasWindowBoundsSnapshot)
-        {
-            _previousWindowBounds = currentWindowBounds;
-            _hasWindowBoundsSnapshot = true;
-            UpdateDynamicMinimumSize();
-            return;
-        }
-
-        var inwardBoundaries = WorkspaceInteraction.GetInwardMovingBoundaries(
-            _previousWindowBounds,
-            currentWindowBounds);
-        if (inwardBoundaries == WorkspaceBoundary.None)
-        {
-            _previousWindowBounds = currentWindowBounds;
-            UpdateDynamicMinimumSize();
-            return;
-        }
-
-        EnsureToolBuffers();
-        if (_toolButtons.Length == 0)
-        {
-            _previousWindowBounds = currentWindowBounds;
-            UpdateDynamicMinimumSize();
-            return;
-        }
-
-        CaptureToolBounds();
-        WorkspaceInteraction.PreserveScreenPositionsForMovingOrigin(
-            _resizeToolBounds,
-            _previousWindowBounds,
-            currentWindowBounds,
-            inwardBoundaries);
-        var firstTool = _resizeToolBounds[0];
-        var bounds = WorkspaceInteraction.GetSoftBounds(
-            Workspace.ActualWidth,
-            Workspace.ActualHeight,
-            firstTool.Width,
-            firstTool.Height);
-        var result = WorkspaceInteraction.ConstrainForResize(
-            _resizeToolBounds,
-            bounds,
-            inwardBoundaries);
-        _lastResizeIterations = result.Iterations;
-        _lastResizeIterationLimit = result.IterationLimit;
-
-        if (!result.IsValid)
-        {
-            PreventInvalidResize(inwardBoundaries);
-            return;
-        }
-
-        _isApplyingAdaptiveResize = true;
-        try
-        {
-            ApplyToolBounds();
-            _previousWindowBounds = currentWindowBounds;
-            UpdateDynamicMinimumSize();
-        }
-        finally
-        {
-            _isApplyingAdaptiveResize = false;
-        }
-    }
-
-    private void PreventInvalidResize(WorkspaceBoundary inwardBoundaries)
-    {
-        _isApplyingAdaptiveResize = true;
-        try
-        {
-            if ((inwardBoundaries & (WorkspaceBoundary.Left | WorkspaceBoundary.Right)) != 0)
-            {
-                MinWidth = Math.Max(MinWidth, Math.Ceiling(_previousWindowBounds.Width));
-                Width = Math.Max(ActualWidth, MinWidth);
-            }
-
-            if ((inwardBoundaries & (WorkspaceBoundary.Top | WorkspaceBoundary.Bottom)) != 0)
-            {
-                MinHeight = Math.Max(MinHeight, Math.Ceiling(_previousWindowBounds.Height));
-                Height = Math.Max(ActualHeight, MinHeight);
-            }
-        }
-        finally
-        {
-            _isApplyingAdaptiveResize = false;
-        }
-    }
-
-    private void UpdateDynamicMinimumSize()
-    {
-        if (!IsLoaded || Workspace.ActualWidth <= 0 || Workspace.ActualHeight <= 0)
+        _cameraUpdateScheduled = false;
+        if (!IsLoaded
+            || WindowState == WindowState.Minimized
+            || Workspace.ActualWidth <= 0
+            || Workspace.ActualHeight <= 0)
         {
             return;
         }
 
         EnsureToolBuffers();
-        CaptureToolBounds();
-        var requiredWorkspaceSize = WorkspaceInteraction.GetRequiredWorkspaceSize(
-            _resizeToolBounds);
-        var chromeWidth = Math.Max(0, ActualWidth - Workspace.ActualWidth);
-        var chromeHeight = Math.Max(0, ActualHeight - Workspace.ActualHeight);
-        var minimumWidth = Math.Ceiling(Math.Max(
-            ChromeMinimumWidth,
-            requiredWorkspaceSize.Width + chromeWidth));
-        var minimumHeight = Math.Ceiling(Math.Max(
-            ChromeMinimumHeight,
-            requiredWorkspaceSize.Height + chromeHeight));
-
-        if (Math.Abs(MinWidth - minimumWidth) > 0.5)
-        {
-            MinWidth = minimumWidth;
-        }
-
-        if (Math.Abs(MinHeight - minimumHeight) > 0.5)
-        {
-            MinHeight = minimumHeight;
-        }
+        EnsureWorldCanvasInitialized();
+        var viewportSize = GetWorkspaceSize();
+        WorldCameraTransform.Matrix = _worldCanvas.GetCameraMatrix(viewportSize);
+        _worldCanvas.EnsureExpanded(viewportSize);
     }
 
     private void EnsureToolBuffers()
     {
         var toolCount = 0;
-        foreach (UIElement child in Workspace.Children)
+        foreach (UIElement child in WorldLayer.Children)
         {
             if (child is Button)
             {
@@ -348,9 +229,8 @@ public partial class MainWindow : Window
         }
 
         _toolButtons = new Button[toolCount];
-        _resizeToolBounds = new Rect[toolCount];
         var toolIndex = 0;
-        foreach (UIElement child in Workspace.Children)
+        foreach (UIElement child in WorldLayer.Children)
         {
             if (child is Button toolButton)
             {
@@ -362,28 +242,22 @@ public partial class MainWindow : Window
     private void ValidateToolIdentityMapping()
     {
         var uniqueIds = new HashSet<string>(StringComparer.Ordinal);
-        foreach (var definition in BuiltInTools.All)
+        foreach (var definition in _toolDefinitionsByVisual.Values)
         {
             if (string.IsNullOrWhiteSpace(definition.Id))
             {
-                throw new InvalidOperationException("Built-in tool IDs must not be empty.");
+                throw new InvalidOperationException("Tool IDs must not be empty.");
             }
 
             if (!uniqueIds.Add(definition.Id))
             {
                 throw new InvalidOperationException(
-                    $"Built-in tool ID '{definition.Id}' is duplicated.");
+                    $"Tool ID '{definition.Id}' is duplicated.");
             }
         }
 
-        if (_toolDefinitionsByVisual.Count != BuiltInTools.All.Count)
-        {
-            throw new InvalidOperationException(
-                "Every built-in tool must map to exactly one workspace visual.");
-        }
-
         var workspaceToolVisuals = new HashSet<FrameworkElement>();
-        foreach (UIElement child in Workspace.Children)
+        foreach (UIElement child in WorldLayer.Children)
         {
             if (child is Button toolButton)
             {
@@ -405,104 +279,239 @@ public partial class MainWindow : Window
                     $"Workspace tool visual '{visual.Name}' has no tool identity.");
             }
         }
-
-        foreach (var definition in BuiltInTools.All)
-        {
-            var mappingCount = 0;
-            foreach (var mappedDefinition in _toolDefinitionsByVisual.Values)
-            {
-                if (ReferenceEquals(mappedDefinition, definition))
-                {
-                    mappingCount++;
-                }
-            }
-
-            if (mappingCount != 1)
-            {
-                throw new InvalidOperationException(
-                    $"Built-in tool '{definition.Id}' must map to exactly one workspace visual.");
-            }
-        }
     }
 
-    private void CaptureDefaultToolPositions()
+    private void CaptureInitialToolPositions()
     {
-        if (_defaultToolPositions.Length == _toolButtons.Length
-            && _toolButtons.Length > 0)
+        if (_hasInitialToolPositions)
         {
             return;
         }
 
-        _defaultToolPositions = new Point[_toolButtons.Length];
-        for (var index = 0; index < _toolButtons.Length; index++)
+        var viewportSize = GetWorkspaceSize();
+        _defaultToolWorldPositions.Clear();
+        _preferredToolWorldPositions.Clear();
+        foreach (var toolButton in _toolButtons)
         {
-            _defaultToolPositions[index] = new Point(
-                GetFiniteCanvasCoordinate(Canvas.GetLeft(_toolButtons[index])),
-                GetFiniteCanvasCoordinate(Canvas.GetTop(_toolButtons[index])));
-        }
-    }
-
-    private void CaptureToolBounds()
-    {
-        for (var index = 0; index < _toolButtons.Length; index++)
-        {
-            var toolButton = _toolButtons[index];
-            _resizeToolBounds[index] = new Rect(
+            var toolId = GetToolDefinition(toolButton).Id;
+            var screenPosition = new Point(
                 GetFiniteCanvasCoordinate(Canvas.GetLeft(toolButton)),
-                GetFiniteCanvasCoordinate(Canvas.GetTop(toolButton)),
-                toolButton.ActualWidth,
-                toolButton.ActualHeight);
+                GetFiniteCanvasCoordinate(Canvas.GetTop(toolButton)));
+            var worldPosition = _worldCanvas.ScreenToWorld(
+                screenPosition,
+                viewportSize);
+            _defaultToolWorldPositions.Add(toolId, worldPosition);
+            _preferredToolWorldPositions.Add(toolId, worldPosition);
+            Canvas.SetLeft(toolButton, worldPosition.X);
+            Canvas.SetTop(toolButton, worldPosition.Y);
         }
+
+        _hasInitialToolPositions = true;
     }
 
-    private void ApplyToolBounds()
+    private void EnsureWorldCanvasInitialized()
     {
-        for (var index = 0; index < _toolButtons.Length; index++)
+        if (_worldCanvas.IsInitialized)
         {
-            Canvas.SetLeft(_toolButtons[index], _resizeToolBounds[index].Left);
-            Canvas.SetTop(_toolButtons[index], _resizeToolBounds[index].Top);
+            return;
         }
+
+        if (!_hasInitialToolPositions)
+        {
+            CaptureInitialToolPositions();
+        }
+
+        _worldCanvas.Initialize(
+            GetPreferredToolWorldBounds(),
+            GetWorkspaceSize());
     }
 
     private bool TryResetLayout()
     {
         EnsureToolBuffers();
-        if (_defaultToolPositions.Length != _toolButtons.Length)
+        if (!_hasInitialToolPositions
+            || _defaultToolWorldPositions.Count != _toolButtons.Length)
         {
             throw new InvalidOperationException("Default tool positions have not been captured.");
         }
 
-        var resetBounds = new Rect[_toolButtons.Length];
-        for (var index = 0; index < _toolButtons.Length; index++)
+        foreach (var toolButton in _toolButtons)
         {
-            resetBounds[index] = new Rect(
-                _defaultToolPositions[index],
-                new Size(
-                    _toolButtons[index].ActualWidth,
-                    _toolButtons[index].ActualHeight));
+            var toolId = GetToolDefinition(toolButton).Id;
+            if (!_defaultToolWorldPositions.TryGetValue(toolId, out var defaultWorldPosition))
+            {
+                throw new InvalidOperationException(
+                    $"Tool '{toolId}' has no Default world position.");
+            }
+
+            _preferredToolWorldPositions[toolId] = defaultWorldPosition;
+            Canvas.SetLeft(toolButton, defaultWorldPosition.X);
+            Canvas.SetTop(toolButton, defaultWorldPosition.Y);
         }
 
-        if (!WorkspaceInteraction.IsLegalLayout(
-                resetBounds,
-                Workspace.ActualWidth,
-                Workspace.ActualHeight))
-        {
-            return false;
-        }
-
-        for (var index = 0; index < _toolButtons.Length; index++)
-        {
-            Canvas.SetLeft(_toolButtons[index], _defaultToolPositions[index].X);
-            Canvas.SetTop(_toolButtons[index], _defaultToolPositions[index].Y);
-        }
-
-        UpdateDynamicMinimumSize();
+        _worldCanvas.Shrink(
+            GetPreferredToolWorldBounds(),
+            GetWorkspaceSize());
+        ApplyCameraProjection();
         return true;
     }
 
-    private WindowBoundsSnapshot GetCurrentWindowBounds()
+    private void UpdatePreferredWorldPosition(Button toolButton)
     {
-        return new WindowBoundsSnapshot(Left, Top, ActualWidth, ActualHeight);
+        var toolId = GetToolDefinition(toolButton).Id;
+        _preferredToolWorldPositions[toolId] = new Point(
+            GetFiniteCanvasCoordinate(Canvas.GetLeft(toolButton)),
+            GetFiniteCanvasCoordinate(Canvas.GetTop(toolButton)));
+    }
+
+    private Rect[] GetPreferredToolWorldBounds()
+    {
+        var bounds = new Rect[_toolButtons.Length];
+        for (var index = 0; index < _toolButtons.Length; index++)
+        {
+            var toolButton = _toolButtons[index];
+            var toolId = GetToolDefinition(toolButton).Id;
+            if (!_preferredToolWorldPositions.TryGetValue(toolId, out var worldPosition))
+            {
+                throw new InvalidOperationException(
+                    $"Tool '{toolId}' has no Preferred world position.");
+            }
+
+            bounds[index] = new Rect(
+                worldPosition,
+                new Size(toolButton.ActualWidth, toolButton.ActualHeight));
+        }
+
+        return bounds;
+    }
+
+    private Size GetWorkspaceSize() => new(
+        Workspace.ActualWidth,
+        Workspace.ActualHeight);
+
+    private ToolDefinition GetToolDefinition(FrameworkElement toolVisual)
+    {
+        return _toolDefinitionsByVisual.TryGetValue(toolVisual, out var definition)
+            ? definition
+            : throw new InvalidOperationException(
+                $"Tool visual '{toolVisual.Name}' has no ToolDefinition mapping.");
+    }
+
+    private void OnWorkspacePreviewMouseDown(
+        object sender,
+        MouseButtonEventArgs e)
+    {
+        if (_isPanningWorkspace)
+        {
+            e.Handled = true;
+            return;
+        }
+
+        if (e.ChangedButton != MouseButton.Middle || _isDragging)
+        {
+            return;
+        }
+
+        CancelToolPressCandidate();
+        if (Mouse.Captured is not null || !Workspace.CaptureMouse())
+        {
+            return;
+        }
+
+        _workspacePanLastPoint = e.GetPosition(Workspace);
+        _isPanningWorkspace = true;
+        e.Handled = true;
+    }
+
+    private void OnWorkspacePreviewMouseMove(object sender, MouseEventArgs e)
+    {
+        if (!_isPanningWorkspace)
+        {
+            return;
+        }
+
+        if (e.MiddleButton != MouseButtonState.Pressed)
+        {
+            EndWorkspacePan();
+            return;
+        }
+
+        var currentPoint = e.GetPosition(Workspace);
+        var screenDelta = currentPoint - _workspacePanLastPoint;
+        _workspacePanLastPoint = currentPoint;
+        _worldCanvas.PanByScreenDelta(screenDelta);
+        ApplyCameraProjection();
+        e.Handled = true;
+    }
+
+    private void OnWorkspacePreviewMouseUp(
+        object sender,
+        MouseButtonEventArgs e)
+    {
+        if (e.ChangedButton != MouseButton.Middle || !_isPanningWorkspace)
+        {
+            return;
+        }
+
+        EndWorkspacePan();
+        e.Handled = true;
+    }
+
+    private void OnWorkspaceLostMouseCapture(object sender, MouseEventArgs e)
+    {
+        if (_isPanningWorkspace && Mouse.Captured != Workspace)
+        {
+            EndWorkspacePan();
+        }
+    }
+
+    private void EndWorkspacePan()
+    {
+        if (!_isPanningWorkspace)
+        {
+            return;
+        }
+
+        _isPanningWorkspace = false;
+        if (Mouse.Captured == Workspace)
+        {
+            Workspace.ReleaseMouseCapture();
+        }
+
+        _worldCanvas.Shrink(
+            GetPreferredToolWorldBounds(),
+            GetWorkspaceSize());
+    }
+
+    private void OnWorkspacePreviewMouseWheel(object sender, MouseWheelEventArgs e)
+    {
+        e.Handled = true;
+        if (_isDragging || _isPanningWorkspace || !_worldCanvas.IsInitialized)
+        {
+            return;
+        }
+
+        CancelToolPressCandidate();
+        var viewportSize = GetWorkspaceSize();
+        var newZoom = _worldCanvas.ZoomScale
+            * Math.Pow(WorldCanvasState.ZoomFactorPerNotch, e.Delta / 120d);
+        if (_worldCanvas.ZoomAtScreenPoint(e.GetPosition(Workspace), viewportSize, newZoom))
+        {
+            ClearBoundaryFeedback();
+            ApplyCameraProjection();
+        }
+    }
+
+    private void OnResetViewClick(object sender, RoutedEventArgs e)
+    {
+        EndWorkspacePan();
+        CancelActiveToolInteraction();
+        _worldCanvas.ResetView();
+        ClearBoundaryFeedback();
+        ApplyCameraProjection();
+        _worldCanvas.Shrink(
+            GetPreferredToolWorldBounds(),
+            GetWorkspaceSize());
     }
 
     private void OnTitleBarMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
@@ -544,7 +553,7 @@ public partial class MainWindow : Window
         {
             if (e.LeftButton != MouseButtonState.Pressed)
             {
-                EndDragging(toolButton);
+                EndDragging(toolButton, commitPosition: true);
                 return;
             }
 
@@ -598,6 +607,8 @@ public partial class MainWindow : Window
 
         _pressedTool = toolButton;
         _pressPointInWorkspace = e.GetPosition(Workspace);
+        _worldGrabOffset = _worldCanvas.ScreenToWorld(_pressPointInWorkspace, GetWorkspaceSize())
+            - new Point(Canvas.GetLeft(toolButton), Canvas.GetTop(toolButton));
         _isLongPressPending = true;
         _isToolClickCandidate = true;
         _longPressTimer.Start();
@@ -616,7 +627,7 @@ public partial class MainWindow : Window
 
         if (_isDragging)
         {
-            EndDragging(toolButton);
+            EndDragging(toolButton, commitPosition: true);
         }
         else
         {
@@ -659,6 +670,7 @@ public partial class MainWindow : Window
 
     private void OnWindowDeactivated(object? sender, EventArgs e)
     {
+        EndWorkspacePan();
         if (_pressedTool is not { } toolButton)
         {
             return;
@@ -696,7 +708,6 @@ public partial class MainWindow : Window
 
         _isLongPressPending = false;
         _isToolClickCandidate = false;
-        _dragGrabOffset = Mouse.GetPosition(toolButton);
         if (!toolButton.CaptureMouse())
         {
             CancelToolPressCandidate();
@@ -769,7 +780,7 @@ public partial class MainWindow : Window
         ToolHostView.Visibility = Visibility.Hidden;
         WorkspaceView.Visibility = Visibility.Visible;
         WorkspaceView.IsHitTestVisible = true;
-        UpdateDynamicMinimumSize();
+        ApplyCameraProjection();
     }
 
     private void MoveDraggedTool(Button toolButton, Point pointerPosition)
@@ -783,23 +794,23 @@ public partial class MainWindow : Window
         _collisionForces.Clear();
         _collisionPressures.Clear();
 
-        var bounds = WorkspaceInteraction.GetSoftBounds(
-            Workspace.ActualWidth,
-            Workspace.ActualHeight,
-            toolButton.ActualWidth,
-            toolButton.ActualHeight);
-        var currentX = Math.Clamp(
+        var viewportSize = GetWorkspaceSize();
+        var toolWorldSize = new Size(toolButton.ActualWidth, toolButton.ActualHeight);
+        var bounds = WorkspaceInteraction.GetWorldDragBounds(
+            _worldCanvas.GetViewportWorldBounds(viewportSize),
+            toolWorldSize,
+            _worldCanvas.ZoomScale);
+        var currentPosition = new Point(
             GetFiniteCanvasCoordinate(Canvas.GetLeft(toolButton)),
-            bounds.MinimumX,
-            bounds.MaximumX);
-        var currentY = Math.Clamp(
-            GetFiniteCanvasCoordinate(Canvas.GetTop(toolButton)),
-            bounds.MinimumY,
-            bounds.MaximumY);
-        var rawDesiredPosition = new Point(
-            pointerPosition.X - _dragGrabOffset.X,
-            pointerPosition.Y - _dragGrabOffset.Y);
-        var desiredPosition = bounds.Clamp(rawDesiredPosition);
+            GetFiniteCanvasCoordinate(Canvas.GetTop(toolButton)));
+        var currentX = currentPosition.X;
+        var currentY = currentPosition.Y;
+        var rawDesiredPosition = _worldCanvas.ScreenToWorld(pointerPosition, viewportSize)
+            - _worldGrabOffset;
+        var desiredPosition = WorkspaceInteraction.ConstrainDragPosition(
+            currentPosition,
+            rawDesiredPosition,
+            bounds);
 
         var resolvedX = ResolveHorizontalMovement(
             toolButton,
@@ -814,11 +825,20 @@ public partial class MainWindow : Window
 
         Canvas.SetLeft(toolButton, resolvedX);
         Canvas.SetTop(toolButton, resolvedY);
+        var resolvedPosition = new Point(resolvedX, resolvedY);
+        _worldCanvas.EnsureExpanded(
+            viewportSize,
+            new Rect(resolvedPosition, toolWorldSize));
+        var screenBounds = WorkspaceInteraction.GetSoftBounds(
+            viewportSize.Width,
+            viewportSize.Height,
+            toolWorldSize.Width * _worldCanvas.ZoomScale,
+            toolWorldSize.Height * _worldCanvas.ZoomScale);
         UpdateBoundaryFeedback(
             toolButton,
-            rawDesiredPosition,
-            new Point(resolvedX, resolvedY),
-            bounds);
+            _worldCanvas.WorldToScreen(rawDesiredPosition, viewportSize),
+            _worldCanvas.WorldToScreen(resolvedPosition, viewportSize),
+            screenBounds);
         UpdateCollisionFeedback(
             toolButton,
             new Vector(
@@ -826,7 +846,7 @@ public partial class MainWindow : Window
                 desiredPosition.Y - resolvedY));
     }
 
-    private void EndDragging(Button toolButton)
+    private void EndDragging(Button toolButton, bool commitPosition = false)
     {
         if (!_isDragging || !ReferenceEquals(_pressedTool, toolButton))
         {
@@ -860,7 +880,28 @@ public partial class MainWindow : Window
             SetToolHighlightOpacity(toolButton, 0);
         }
 
-        UpdateDynamicMinimumSize();
+        if (commitPosition && !IsLayoutLocked)
+        {
+            UpdatePreferredWorldPosition(toolButton);
+        }
+        else
+        {
+            var preferred = _preferredToolWorldPositions[GetToolDefinition(toolButton).Id];
+            Canvas.SetLeft(toolButton, preferred.X);
+            Canvas.SetTop(toolButton, preferred.Y);
+        }
+
+        var viewportSize = GetWorkspaceSize();
+        var toolId = GetToolDefinition(toolButton).Id;
+        _worldCanvas.EnsureExpanded(
+            viewportSize,
+            new Rect(
+                _preferredToolWorldPositions[toolId],
+                new Size(toolButton.ActualWidth, toolButton.ActualHeight)));
+        ApplyCameraProjection();
+        _worldCanvas.Shrink(
+            GetPreferredToolWorldBounds(),
+            viewportSize);
     }
 
     private double ResolveHorizontalMovement(
@@ -876,7 +917,7 @@ public partial class MainWindow : Window
         Button? collidedTool = null;
         var collisionDirection = 0d;
 
-        foreach (UIElement child in Workspace.Children)
+        foreach (UIElement child in WorldLayer.Children)
         {
             if (child is not Button otherTool
                 || ReferenceEquals(otherTool, toolButton))
@@ -942,7 +983,7 @@ public partial class MainWindow : Window
         Button? collidedTool = null;
         var collisionDirection = 0d;
 
-        foreach (UIElement child in Workspace.Children)
+        foreach (UIElement child in WorldLayer.Children)
         {
             if (child is not Button otherTool
                 || ReferenceEquals(otherTool, toolButton))
@@ -1292,6 +1333,18 @@ public partial class MainWindow : Window
         highlight.Opacity = 0;
     }
 
+    private Rect GetToolScreenBounds(Button toolButton)
+    {
+        var position = _worldCanvas.WorldToScreen(
+            new Point(Canvas.GetLeft(toolButton), Canvas.GetTop(toolButton)),
+            GetWorkspaceSize());
+        return new Rect(
+            position,
+            new Size(
+                toolButton.ActualWidth * _worldCanvas.ZoomScale,
+                toolButton.ActualHeight * _worldCanvas.ZoomScale));
+    }
+
     private void PositionBoundaryHighlight(
         Border highlight,
         Button toolButton,
@@ -1302,14 +1355,15 @@ public partial class MainWindow : Window
             throw new InvalidOperationException("Boundary highlight requires a TranslateTransform.");
         }
 
-        var toolLeft = GetFiniteCanvasCoordinate(Canvas.GetLeft(toolButton));
-        var toolTop = GetFiniteCanvasCoordinate(Canvas.GetTop(toolButton));
+        var toolScreenBounds = GetToolScreenBounds(toolButton);
+        var toolLeft = toolScreenBounds.Left;
+        var toolTop = toolScreenBounds.Top;
         if (boundary is WorkspaceBoundary.Left or WorkspaceBoundary.Right)
         {
             var maximumOffset = Math.Max(0, Workspace.ActualHeight - highlight.Height);
             offset.X = 0;
             offset.Y = Math.Clamp(
-                toolTop + (toolButton.ActualHeight / 2) - (highlight.Height / 2),
+                toolTop + (toolScreenBounds.Height / 2) - (highlight.Height / 2),
                 0,
                 maximumOffset);
             return;
@@ -1317,7 +1371,7 @@ public partial class MainWindow : Window
 
         var maximumHorizontalOffset = Math.Max(0, Workspace.ActualWidth - highlight.Width);
         offset.X = Math.Clamp(
-            toolLeft + (toolButton.ActualWidth / 2) - (highlight.Width / 2),
+            toolLeft + (toolScreenBounds.Width / 2) - (highlight.Width / 2),
             0,
             maximumHorizontalOffset);
         offset.Y = 0;
@@ -1327,13 +1381,14 @@ public partial class MainWindow : Window
     {
         var random = Random.Shared;
         var particleCount = random.Next(7, 15);
-        var toolLeft = GetFiniteCanvasCoordinate(Canvas.GetLeft(toolButton));
-        var toolTop = GetFiniteCanvasCoordinate(Canvas.GetTop(toolButton));
+        var toolScreenBounds = GetToolScreenBounds(toolButton);
+        var toolLeft = toolScreenBounds.Left;
+        var toolTop = toolScreenBounds.Top;
 
         for (var index = 0; index < particleCount; index++)
         {
             var size = 2 + (random.NextDouble() * 2.5);
-            var tangentOffset = random.NextDouble() * 48 + 8;
+            var tangentFraction = 0.125 + (random.NextDouble() * 0.75);
             var tangentDrift = (random.NextDouble() - 0.5) * 18;
             var normalDrift = 8 + (random.NextDouble() * 16);
             var startLeft = toolLeft;
@@ -1345,12 +1400,12 @@ public partial class MainWindow : Window
             {
                 case WorkspaceBoundary.Left:
                     startLeft = WorkspaceInteraction.SoftBoundaryPadding - (size / 2);
-                    startTop += tangentOffset - (size / 2);
+                    startTop += toolScreenBounds.Height * tangentFraction - (size / 2);
                     driftX = normalDrift;
                     driftY = tangentDrift;
                     break;
                 case WorkspaceBoundary.Top:
-                    startLeft += tangentOffset - (size / 2);
+                    startLeft += toolScreenBounds.Width * tangentFraction - (size / 2);
                     startTop = WorkspaceInteraction.SoftBoundaryPadding - (size / 2);
                     driftX = tangentDrift;
                     driftY = normalDrift;
@@ -1359,12 +1414,12 @@ public partial class MainWindow : Window
                     startLeft = Workspace.ActualWidth
                         - WorkspaceInteraction.SoftBoundaryPadding
                         - (size / 2);
-                    startTop += tangentOffset - (size / 2);
+                    startTop += toolScreenBounds.Height * tangentFraction - (size / 2);
                     driftX = -normalDrift;
                     driftY = tangentDrift;
                     break;
                 case WorkspaceBoundary.Bottom:
-                    startLeft += tangentOffset - (size / 2);
+                    startLeft += toolScreenBounds.Width * tangentFraction - (size / 2);
                     startTop = Workspace.ActualHeight
                         - WorkspaceInteraction.SoftBoundaryPadding
                         - (size / 2);
@@ -1569,7 +1624,7 @@ public partial class MainWindow : Window
             Canvas.SetLeft(particle, startLeft);
             Canvas.SetTop(particle, startTop);
             Panel.SetZIndex(particle, 2);
-            Workspace.Children.Add(particle);
+            WorldLayer.Children.Add(particle);
 
             particle.BeginAnimation(
                 Canvas.LeftProperty,
@@ -1597,7 +1652,7 @@ public partial class MainWindow : Window
                 Duration = TimeSpan.FromMilliseconds(lifetime * 0.88),
                 EasingFunction = PointerFollowEasing
             };
-            fade.Completed += (_, _) => Workspace.Children.Remove(particle);
+            fade.Completed += (_, _) => WorldLayer.Children.Remove(particle);
             particle.BeginAnimation(
                 OpacityProperty,
                 fade,
@@ -1843,7 +1898,7 @@ public partial class MainWindow : Window
             Canvas.SetLeft(particle, startLeft);
             Canvas.SetTop(particle, startTop);
             Panel.SetZIndex(particle, 2);
-            Workspace.Children.Add(particle);
+            WorldLayer.Children.Add(particle);
 
             particle.BeginAnimation(
                 Canvas.LeftProperty,
@@ -1871,7 +1926,7 @@ public partial class MainWindow : Window
                 Duration = TimeSpan.FromMilliseconds(lifetime * 0.84),
                 EasingFunction = PointerFollowEasing
             };
-            fade.Completed += (_, _) => Workspace.Children.Remove(particle);
+            fade.Completed += (_, _) => WorldLayer.Children.Remove(particle);
             particle.BeginAnimation(
                 OpacityProperty,
                 fade,
@@ -2050,7 +2105,7 @@ public partial class MainWindow : Window
     private void OnWindowStateChanged(object? sender, EventArgs e)
     {
         UpdateMaximizeGlyph();
-        ScheduleAdaptiveResize();
+        ScheduleCameraProjection();
     }
 
     private void ToggleMaximizeRestore()

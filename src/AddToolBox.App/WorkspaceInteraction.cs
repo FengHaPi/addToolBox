@@ -156,29 +156,62 @@ internal static class WorkspaceInteraction
             maximumY);
     }
 
+    internal static SoftWorkspaceBounds GetWorldDragBounds(
+        Rect viewportWorldBounds,
+        Size toolWorldSize,
+        double zoomScale)
+    {
+        var padding = SoftBoundaryPadding / zoomScale;
+        var minimumX = viewportWorldBounds.Left + padding;
+        var minimumY = viewportWorldBounds.Top + padding;
+        return new SoftWorkspaceBounds(
+            minimumX,
+            minimumY,
+            Math.Max(minimumX, viewportWorldBounds.Right - padding - toolWorldSize.Width),
+            Math.Max(minimumY, viewportWorldBounds.Bottom - padding - toolWorldSize.Height));
+    }
+
+    internal static Point ConstrainDragPosition(
+        Point currentPosition,
+        Point desiredPosition,
+        SoftWorkspaceBounds bounds)
+    {
+        // A camera change can leave an item outside the safety inset. Permit a
+        // continuous drag back in, but never increase its existing overflow.
+        return new Point(
+            Math.Clamp(
+                desiredPosition.X,
+                Math.Min(currentPosition.X, bounds.MinimumX),
+                Math.Max(currentPosition.X, bounds.MaximumX)),
+            Math.Clamp(
+                desiredPosition.Y,
+                Math.Min(currentPosition.Y, bounds.MinimumY),
+                Math.Max(currentPosition.Y, bounds.MaximumY)));
+    }
+
     internal static WorkspaceBoundary GetPressedBoundaryContacts(
         Point actualResolvedPosition,
         Point rawDesiredPosition,
         SoftWorkspaceBounds bounds)
     {
         var contacts = WorkspaceBoundary.None;
-        if (actualResolvedPosition.X <= bounds.MinimumX + BoundaryContactEpsilon
+        if (Math.Abs(actualResolvedPosition.X - bounds.MinimumX) <= BoundaryContactEpsilon
             && rawDesiredPosition.X < bounds.MinimumX)
         {
             contacts |= WorkspaceBoundary.Left;
         }
-        else if (actualResolvedPosition.X >= bounds.MaximumX - BoundaryContactEpsilon
+        else if (Math.Abs(actualResolvedPosition.X - bounds.MaximumX) <= BoundaryContactEpsilon
                  && rawDesiredPosition.X > bounds.MaximumX)
         {
             contacts |= WorkspaceBoundary.Right;
         }
 
-        if (actualResolvedPosition.Y <= bounds.MinimumY + BoundaryContactEpsilon
+        if (Math.Abs(actualResolvedPosition.Y - bounds.MinimumY) <= BoundaryContactEpsilon
             && rawDesiredPosition.Y < bounds.MinimumY)
         {
             contacts |= WorkspaceBoundary.Top;
         }
-        else if (actualResolvedPosition.Y >= bounds.MaximumY - BoundaryContactEpsilon
+        else if (Math.Abs(actualResolvedPosition.Y - bounds.MaximumY) <= BoundaryContactEpsilon
                  && rawDesiredPosition.Y > bounds.MaximumY)
         {
             contacts |= WorkspaceBoundary.Bottom;

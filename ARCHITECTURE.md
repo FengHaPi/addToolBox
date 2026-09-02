@@ -22,7 +22,7 @@ addToolBox 是一个 Windows 本地模块化工具箱。
 - .NET 10
 - WPF
 
-技术路线已经确定，但具体项目工程目前尚未创建。
+技术路线已经落地为 `AddToolBox.sln` 与下述五个项目；具体 Module 系统尚未实现。
 
 ## 2. 核心设计思想
 
@@ -48,9 +48,9 @@ addToolBox 是一个 Windows 本地模块化工具箱。
 
 这些只是示例和计划，不表示已经实现。
 
-## 3. 计划中的项目分层
+## 3. 项目分层
 
-当前计划后续建立：
+当前已建立：
 
 - AddToolBox.App
 - AddToolBox.Core
@@ -60,29 +60,29 @@ addToolBox 是一个 Windows 本地模块化工具箱。
 
 ### AddToolBox.App
 
-计划作为 WPF 应用入口和最终组合层。
+WPF 应用入口和最终组合层；当前包含 Shell、World Canvas Workspace 与 Tool Host 基础。
 
 ### AddToolBox.Core
 
-计划存放稳定的核心规则、领域模型和核心抽象。
+存放稳定的核心规则和模型；当前仅有不依赖 WPF 的 `ToolDefinition(Id, DisplayName, IconKey)`。
 
 Core 不允许因为某一个具体工具的需求不断膨胀。
 
 ### AddToolBox.SDK
 
-计划提供未来模组开发需要的公共契约。
+项目骨架已建立；未来模组开发需要的公共契约尚未设计和实现。
 
 SDK 应保持小、稳定，并尽量减少依赖。不能因为单个模组方便就随意修改 SDK。
 
 ### AddToolBox.Infrastructure
 
-计划负责文件、配置、日志、模组加载等基础设施的具体实现。
+项目骨架已建立；文件、配置、日志、模组加载等基础设施仍为计划职责，尚未实现。
 
 ### AddToolBox.UI
 
-计划负责公共 WPF 控件、样式、Design Tokens、主题等 UI 能力。
+WPF 类库骨架已建立；公共控件、样式、Design Tokens、主题等仍为计划职责，尚未形成公共 UI 系统。
 
-以上均为计划结构，尚未创建，不得描述成已经完成。
+项目存在不代表其全部计划职责已完成。当前项目引用仅为 App → Core，没有第三方 PackageReference。
 
 ## 4. 项目分层与引用原则
 
@@ -97,7 +97,7 @@ SDK 应保持小、稳定，并尽量减少依赖。不能因为单个模组方�
 - App 作为组合入口可以负责连接各层
 - 新增项目引用必须具有实际需求，不为了“以后可能需要”提前增加
 
-完整项目引用图在项目骨架建立时再根据真实需求确定。当前阶段不要提前虚构不必要的引用关系。
+后续项目引用继续按真实需求确定，不提前增加无用途的引用关系。
 
 ## 5. 模组原则
 
@@ -237,23 +237,20 @@ ARCHITECTURE.md 是项目架构事实和约束的权威文档，代码实现应�
 
 ## 13. 当前状态
 
-当前项目仍处于 V0.1 Bootstrap 阶段。
+当前主体基线为 World Canvas Host Baseline；下一主要阶段为 Module System V0.1，尚未开始实现 Module 系统。
 
-目前已经确定的是：
+目前已经建立的是：
 
 - 产品方向
 - 技术路线
 - 基础架构原则
 - AI 开发治理原则
+- 五项目 C# solution 与 WPF App
+- Windows 11 风格 Shell、World Canvas / Viewport、Pan / Zoom / Reset View、Dynamic WorldExtent
+- ToolDefinition、Tool 世界坐标交互、Layout Lock / Reset Layout 和 Tool Host 基础；默认 Workspace 为空
 
 目前尚未实现：
 
-- C# solution
-- WPF App
-- Core
-- SDK
-- Infrastructure
-- UI
 - 模组加载
 - 模组安装
 - 主题系统
