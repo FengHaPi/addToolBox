@@ -33,6 +33,11 @@
 
 - **Automatic Compaction — Retired from core Resize behavior。** 自动收拢与长期 World Canvas 语义冲突，当前产品路径已移除，研究基础继续保留。未来用户主动触发的 Arrange / Auto layout 仍只是可评估方向。
 
+### Research / Technical Milestone
+
+- **V0.2-P0 resource investigation — Research / Uncommitted（2026-09-03）。** CPU FP32 四组内存矩阵表明默认约 12.49 GB 工作集受 Arena / Memory Pattern 共同放大，仍属 Functionally Stable but Resource Heavy，不定性为泄漏。FP32 DirectML 第二次再失败，本次为设备移除而非同一 OOM HRESULT；临时 FP16 DML 10/10 成功、warm 约 2.07 秒，但资源仍超预算且真实质量未验收，不进入生产。建议保留 CPU 后备并先评估模型，详见 [P0 Reference](docs/MODULE_DEVELOPMENT_REFERENCE_V1.md#15-v02-p0-resource-investigation)；正式代码、依赖和模型保持 V0.1。
+- **V0.2 backend gate — Blocked / Uncommitted（2026-09-03）。** 从干净 `88efae8` 开始，现有 FP32 模型的 DirectML 1.24.4 隔离探针在第二次 Run 出现命令列表执行内存分配失败；按任务停止条件未接入生产。原 CPU 1.29.0 的约 12.60 GB Working Set 风险另行复测，方法、结果与证据边界见 [Reference](docs/MODULE_DEVELOPMENT_REFERENCE_V1.md#14-v02-backend-gate)。未实现或验收 V0.2 Batch/GPU/性能面板，不将高工作集直接称为泄漏。
+
 ## Historical Milestones
 
 按 Git Commit Date 顺序排列，时区为 `+08:00`。详细历史中保留完整 Hash；无法定位提交的试验不补写日期或 Hash。

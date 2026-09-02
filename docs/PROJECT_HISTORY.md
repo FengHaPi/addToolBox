@@ -22,6 +22,24 @@ addToolBox 是 Windows-first、C# / .NET 10 / WPF 的本地模块化工具箱与
 
 ## 历史时间轴
 
+### 2026-09-03 — Background Remover V0.2-P0 资源归因
+
+状态：**Research / Uncommitted；V0.2 生产准入未通过**。所有者在前一轮 backend gate 停止后单独批准 P0；从相同 HEAD / origin/main=`88efae8` 和三个预期研究文档修改继续，保留旧记录，不要求或制造干净工作树。只运行被忽略的 artifacts 探针并维护三份既有文档。
+
+CPU FP32 的 4×6-run 矩阵确认资源代价不仅由模型文件大小决定：默认 peak WS=12.49 GB / warm median=5.318秒；关 Memory Pattern 为7.66 GB，关 Arena 为6.50 GB，两者均关仍有6.27 GB瞬时峰值。Dispose后各组约120 MB；与前轮20-run平台期共同支持 Session关联native分配/保留是主要方向，但无heap trace，未证明长期不存在泄漏。产品判断为 **Functionally Stable but Resource Heavy**，不宜作为低占用通用默认。
+
+FP32 DML 在同一 RTX4060 上再次第二次失败，本次HRESULT为0x887A0005而非前轮0x8007000E；超出DXGI预算是资源压力证据，不把它写成已定位的唯一根因。新授权的公开FP16固定SHA诊断中，CPU首张在进程存活196.738秒后仍未完成，按性能无意义分支终止；DML FP16则10/10成功、warm median约2.066秒，peak WS约6.57 GB、Private约12.50 GB，DXGI local记账11.85 GB仍超预算。后者是 **PROMISING 的研究结果，不是V0.2候选已获准入**；仅合成图数值检查，真实人像/商品/毛发质量未验收。
+
+本轮建议 **A + D：保留明确的FP32 CPU后备，下一轮优先Model Comparison**；不直接将FP16 DML接入生产，也不据FP32失败宣告整个DirectML不可用。原因、全矩阵、版本差异、显存口径、终止记录与证据边界见 [P0 Reference](MODULE_DEVELOPMENT_REFERENCE_V1.md#15-v02-p0-resource-investigation)。Host/SDK/生产Module/依赖/正式模型与安装包均未改；未开始Batch或性能面板。完整Host solution独立输出build 0 warnings / 0 errors，不等于UI/批处理验收；未提交。
+
+### 2026-09-03 — Background Remover V0.2 后端准入检查
+
+状态：**Research / Blocked；本记录 Uncommitted，V0.2 产品实现未开始**。开始时只读核实 HEAD、本地 origin/main 和 GitHub main 均为 `88efae8083c4e173b727bbe048854e939f9ddaaa feat: add background remover module v0.1`，工作树干净。
+
+先验证现有模型可用性，再接入批量与 UI。当前 NuGet DirectML 最新稳定包为 1.24.4，不能假定与 V0.1 CPU 1.29.0 同版本。独立探针保持 FP32 模型和生产 Pre/Postprocess，在 RTX 4060 Laptop GPU 上创建 Session 并完成第一次 Run，第二次 Run 于 `DmlFusedNode_13_45` 返回 `0x8007000E`，随后 DirectML 命令列表关闭失败。按所有者规定停止 GPU 实现，没有换模型、调整优化配置试错或通过 CPU fallback 伪装 GPU 成功。该证据是当前模型/后端/硬件组合的资源与执行阻断，不是已证实的算子不支持或内存泄漏。
+
+同时按本轮要求以原 CPU 1.29.0 做连续 20 次合成输入和 Session Dispose 测量，重新检查 V0.1 约 12.60 GB 风险，详见 [V0.2 backend gate](MODULE_DEVELOPMENT_REFERENCE_V1.md#14-v02-backend-gate)。生产代码、依赖、模型、SDK、Host 和已安装模组保持 V0.1；Batch、20 张真实标准集、完整 CPU/GPU 对比及人工验收尚未进行。后续先由所有者决定如何处理后端阻断，不自动进入其他运行时、FP16 或第二模型。
+
 ### 2026-09-03 — Module System V0.1 + First Official Module
 
 状态：**已实现，build / 自动检查通过，Owner-confirmed manual acceptance**。起点为已人工验收且推送的 `24948e8 feat: establish world canvas host baseline`，文档制度独立基线为 `4b26a0a`；本轮 Host/SDK 与 Module/Reference 分别提交，不与 V0.2 混合。

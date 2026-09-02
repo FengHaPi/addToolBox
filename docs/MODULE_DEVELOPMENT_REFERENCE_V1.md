@@ -300,3 +300,269 @@ git diff --check
 Smoke 命令是前轮实际执行记录，其中 `--host` 当时运行在未安装模组的空目录条件；不是声称当前重复运行仍使用同一外部状态。Reference 还分别以 `startup-empty` / `startup-installed` 启动新探针进程各 3 次。Harness 为本地忽略资产，不随 commit 发布；上文完整保留方法、输入条件、输出指标和局限，不承诺 clone 仓库后拥有这些临时探针。
 
 V0.2 的 Batch、Auto/GPU/CPU、DirectML、性能开关、标准真实图片集尚未实现，也未混入 V1。V1 契约可复用不等于 V0.2 已验收；后续必须先满足独立基线与该阶段的授权/验证条件。
+
+## 14. V0.2 backend gate
+
+**2026-09-03 / Research / Blocked / Uncommitted。** 本节不是 V0.2 已实现或通过验收的记录。开始前 `git status --short` 为空；HEAD、本地 origin/main、`git ls-remote origin refs/heads/main` 均为 `88efae8083c4e173b727bbe048854e939f9ddaaa`。生产代码/模型/依赖和已安装 V0.1 均未更改。
+
+### 检查方法
+
+先完成后端可行性准入，而不是先把批量/UI 接到未知的 GPU 路径。两个独立 Release / net10.0-windows / win-x64 控制台探针直接 Compile-link 当前未改动的 `BackgroundRemovalEngine.cs`。探针自行计时创建 Session，经反射赋给 Engine 的 `_session` 后调用原 `Process`；这是隔离测试装配，不是生产 fallback 或改动初始化逻辑。读取模型前验证原 SHA，实际 Metadata 均为 `input_image float32 [1,3,1024,1024]` 与 `output_image float32 [1,1,1024,1024]`。预处理/后处理静态复核保持 RGB、bilinear 1024、/255、ImageNet mean/std、NCHW、stable sigmoid、mask resize 和原 Alpha 相乘；尚未重跑全部 V0.1 pipeline smoke，也未进行真实图片质量复核。
+
+两个探针分别引用：
+
+- CPU baseline：`Microsoft.ML.OnnxRuntime 1.29.0`，ORT_ENABLE_ALL，默认 CPU arena / Memory Pattern / 线程策略，没有降低线程数。
+- GPU gate：`Microsoft.ML.OnnxRuntime.DirectML 1.24.4`，实际传递依赖 `Microsoft.AI.DirectML 1.15.4`、Managed 1.24.4。实时 NuGet 版本列表最高稳定版本为 1.24.4，不存在所查询的 DirectML 1.29.0；未将它替换进生产 csproj。设置 ORT_ENABLE_ALL、EnableMemoryPattern=false、ORT_SEQUENTIAL、AppendExecutionProvider_DML(0)，单 Session / 串行 Run，未做自动 CPU 回退。
+
+硬件仍为 i7-12650H / 16 logical processors、约 31.74 GiB RAM、RTX 4060 Laptop GPU / driver 32.0.16.1088。用 DXGI EnumAdapters1 只读核实 index 0 为 NVIDIA 硬件适配器，非 Microsoft Basic Render Driver；没有 GPU 温度/利用率/VRAM 轮询。
+
+输入是同一程序生成的 320×256 冻结 BGRA32 Bitmap：白背景；满足 `80 < x < 240 && 50 < y < 220` 的矩形 BGRA=(30,70,210,255)，(0,0) 原 Alpha=0。每次使用同一 Bitmap，未读私人图片、未保存输出 PNG。此合成输入只用于后端与内存诊断，不替代标准真实图片集；也不是 V0.1 原合成图的逐字节副本。
+
+WorkingSet64 约每 100ms 采样；每次完成读取进程 Working Set 和 GC.GetTotalMemory(false)，输出原始 BGRA 像素 SHA256。CPU approximate = TotalProcessorTime delta / Process wall / Environment.ProcessorCount。无强制 GC、无清缓存/调线程/关闭用户应用。探针不是完整 Host，因此未测 UI heartbeat；原已运行 Host 仅另行只读检查窗口句柄及 Responding，不能代替 V0.2 UI/Batch 验收。与 V0.1 的 20ms Host 探针采样方式不同，峰值不是严格同条件比较。
+
+### GPU：触发停止条件
+
+| 项目 | 结果 |
+| --- | --- |
+| Providers / runtime | DmlExecutionProvider、CPUExecutionProvider；1.24.4 |
+| Session init（含 SHA） | 4361.362 ms |
+| 第 1 次 Pre / Inference / Post / Process total | 21.520 / 18298.253 / 14.999 / 18336.148 ms |
+| 第 1 次平均进程 CPU | 0.325%（不是 GPU 利用率） |
+| 第 1 次完成时 Working Set | 15892824064 bytes |
+| 截至第 1 次完成已采样峰值 | 17556086784 bytes，约 17.56 GB；**不是第二次失败时整个进程的最终峰值** |
+| 第 1 次 BGRA SHA256 | E0C6DAC5AE684DD87447F5EB961484D0DE370FD7AAF567972879D51A629E0EB2 |
+| 第 2 次 Run | 失败；未启动后续 Run，进程 exit 1 |
+
+原始关键报错：
+
+```text
+Non-zero status code returned while running DmlFusedNode_13_45 node.
+DmlGraphFusionHelper.cpp(1078): 8007000E
+OnnxRuntimeException [ErrorCode:Fail]
+DmlCommandRecorder.cpp(342): 80004005
+```
+
+核对相同 rel-1.24.4 的 [DmlGraphFusionHelper.cpp](https://github.com/microsoft/onnxruntime/blob/rel-1.24.4/onnxruntime/core/providers/dml/DmlExecutionProvider/src/DmlGraphFusionHelper.cpp#L1069)：1078 行检查 ExecuteCommandList 的 HRESULT；随后 [DmlCommandRecorder.cpp](https://github.com/microsoft/onnxruntime/blob/rel-1.24.4/onnxruntime/core/providers/dml/DmlExecutionProvider/src/DmlCommandRecorder.cpp#L342) 为命令列表 Close 失败。微软将 [0x8007000E 定义为 E_OUTOFMEMORY](https://learn.microsoft.com/en-us/windows/win32/seccrypto/common-hresult-values)，表示必要内存分配失败。
+
+**可以确认：** 当前 FP32 / DirectML / 本机组合未能稳定完成重复 Run，不能作为 V0.2 GPU 后端交付。**不能确认：** 具体哪种 RAM/设备资源分配耗尽、融合节点对应的单一原始算子、驱动与执行提供程序各自责任、是否长期泄漏。不能把融合节点错误写成“模型算子不受支持”，也不能仅凭高 Working Set 宣称泄漏。没有修改图、换 FP16、换模型、升级驱动、调整优化或增加重试来绕过本轮停止规则。GPU 只有 1 次成功，不能给出 GPU warm mean/P95 或完整性能/质量比较；与 CPU 原始像素 SHA 不同也不能直接推断画质好坏。
+
+### CPU：重新测量约 12.60 GB 风险
+
+原 CPU 1.29.0 新进程，Session init（含 SHA）3350.412ms；**1 cold + 19 warm，共 20 次真实 Process 均成功，exit 0**。Total 是 Process 的墙钟时间，不含 init/decode/save/UI。warm mean 5482.513ms；nearest-rank P95=6617.137ms（n=19，因此对应最大样本，统计置信度有限）。warm Pre / Inference / Post mean=23.230 / 5452.250 / 7.009ms。20 次平均 CPU approximate=61.509%；最大的单次平均值=62.215%，**这不是高频 CPU peak 测量**。
+
+| Run（1=cold） | Process ms | 平均 CPU % | 完成时 Working Set bytes | GC estimate bytes |
+| --- | ---: | ---: | ---: | ---: |
+| 1 | 6256.036 | 57.87 | 7620255744 | 17751984 |
+| 2 | 6617.137 | 61.29 | 12465266688 | 35193728 |
+| 3 | 5760.796 | 61.93 | 12482871296 | 52531112 |
+| 4 | 5464.358 | 61.85 | 12500557824 | 69859696 |
+| 5 | 5416.359 | 61.73 | 12518060032 | 17765032 |
+| 6 | 5379.254 | 62.21 | 12504330240 | 17755304 |
+| 7 | 5394.872 | 61.24 | 12492275712 | 18354416 |
+| 8 | 5386.678 | 62.13 | 12479541248 | 18354472 |
+| 9 | 5404.843 | 61.49 | 12471574528 | 18354208 |
+| 10 | 5418.017 | 61.86 | 12458745856 | 18353952 |
+| 11 | 5425.803 | 61.48 | 12472500224 | 18374016 |
+| 12 | 5350.782 | 61.94 | 12459741184 | 18353096 |
+| 13 | 5373.842 | 62.11 | 12472659968 | 18349160 |
+| 14 | 5377.088 | 61.89 | 12455579648 | 18364192 |
+| 15 | 5399.809 | 62.00 | 12468379648 | 18359848 |
+| 16 | 5405.080 | 61.36 | 12455809024 | 18371824 |
+| 17 | 5418.553 | 61.20 | 12468592640 | 18372904 |
+| 18 | 5456.996 | 60.95 | 12455796736 | 18373848 |
+| 19 | 5360.733 | 62.10 | 12468600832 | 18375464 |
+| 20 | 5356.740 | 61.55 | 12455849984 | 18376840 |
+
+20 次 BGRA 输出 SHA 相同：`45BC3915AAAAC5E6DC91E69E42603FBD9C444F9C34CC5ADF1B77948E140D69CF`；不是 PNG SHA，与 V0.1 文件哈希不作直接比较。
+
+- 全程采样峰值 **12543774720 bytes = 12.54 GB（约 11.68 GiB）**，重新证实 V0.1 约 12.60 GB 量级的资源风险仍存在，并没有因“模型只有 224 MB”而消失。
+- 第 3–20 次完成时 Working Set 在 **12455579648–12518060032 bytes** 波动。本次观察不到随已处理图片数线性增长；不能外推为 100/1000 张批量稳定性或所有分辨率安全。
+- 第 20 次后调用现有 Engine.Dispose（释放同一 Session），等待 500ms、不强制 GC：Working Set **108851200 bytes（108.85 MB）**，GC estimate **18422424 bytes**。释放前最后一次 Working Set=12455849984 bytes，GC estimate=18376840 bytes。
+- 工作集显著随 Session Dispose 下降，而托管估计量基本相同，支持主要占用是 Session 生命周期关联的 native/runtime 资源，而非保留 20 个结果 Bitmap。[ORT arena 文档](https://onnxruntime.ai/docs/get-started/with-c.html#features) 说明默认 arena 会保留已申请区域用于复用；这与本次现象一致，但本次没有 native heap allocation trace，不能证明 12.54 GB 全部属于同一种 arena 分配。
+- **性能风险保留，不定性为内存泄漏。** 此处 Dispose 仅为探针观察；生产 V0.1 仍缓存 Session 到进程退出，本轮没有悄悄改变生命周期。
+
+### 未实施项目与清理/验证边界
+
+GPU gate 已触发停止，生产仍为 V0.1：没有 Batch、Folder 递归输入、新桌面输出/失败记录、Auto/GPU/CPU UI、性能面板或有界批处理实现；没有 100/1000 任务测试、真实图片 CPU/GPU 比较、面板 ON/OFF 开销或新人工验收。公开图片只做来源候选查询，标准集尚未建立，下载图片数为 0，不虚报 20 张集/6 张性能集完成。
+
+本轮临时工程位于已忽略的 `artifacts/background-v02-backend`、`artifacts/background-v02-cpu-baseline`；没有复制/修改用户安装模组，也没有读取私人图片。两个探针均已结束。原 V0.1 已忽略夹具不属于本轮清理范围，不动它们。
+
+实际执行的探针命令：
+
+```powershell
+dotnet build -c Release .\artifacts\background-v02-backend\BackendProbe.csproj
+dotnet .\artifacts\background-v02-backend\bin\Release\net10.0-windows\win-x64\BackendProbe.dll .\modules\AddToolBox.BackgroundRemover\Models\model.onnx gpu 4
+dotnet build -c Release .\artifacts\background-v02-cpu-baseline\CpuBaselineProbe.csproj
+dotnet .\artifacts\background-v02-cpu-baseline\bin\Release\net10.0-windows\win-x64\CpuBaselineProbe.dll .\modules\AddToolBox.BackgroundRemover\Models\model.onnx cpu 20
+```
+两个探针 build 都为 0 warnings / 0 errors。GPU 命令虽请求 4 次，实际第 2 次失败，仅完成 1 次；不得报告为 4 次通过。没有进行生产代码修复尝试、Git 写操作或新一轮 GPU Run。
+
+后续构建检查（生产仍为 V0.1）：
+
+| 实际命令 | warnings / errors | 验证范围 |
+| --- | --- | --- |
+| `dotnet build .\AddToolBox.sln` | **20 / 4，失败** | 原已运行的 AddToolBox.App（PID 26696）锁住 Debug 下 Core/SDK DLL；MSB3026 重试后 MSB3027/MSB3021 复制失败。未关闭用户窗口，也未修改源码或屏蔽 warning |
+| `dotnet build .\AddToolBox.sln --artifacts-path .\artifacts\v02-gate-host-build` | **0 / 0，通过** | 同一完整 solution 使用独立输出路径，验证编译与构建，不是运行/UI 验收；不能据此抹去上一条默认输出失败 |
+| `dotnet build -c Release .\modules\AddToolBox.BackgroundRemover\AddToolBox.BackgroundRemover.csproj` | **0 / 0，通过** | 原独立 V0.1 Module Release，不含新的 GPU/Batch 实现 |
+
+**清理未完成：** 已验证三个本轮专用 artifacts 目录的绝对路径、文件清单和无 reparse point；随后递归删除被执行策略在进程启动前拦截，未换工具绕过、未删除任何已有夹具。保留：`background-v02-backend` 38 文件 / 51636288 bytes，`background-v02-cpu-baseline` 34 文件 / 17353348 bytes，`v02-gate-host-build` 120 文件 / 1338911 bytes；共 **192 文件 / 70328547 bytes**，均被 Git 忽略。它们是探针源码/构建输出，不含用户图片或新下载模型；NuGet 标准缓存亦未清理。原 V0.1 临时夹具继续不动。后续不得把这次状态写成“临时文件已全部清理”。
+
+## 15. V0.2-P0 resource investigation
+
+**2026-09-03 / Research / Uncommitted；不是 V0.2 生产实现或人工验收。** 按所有者新的 P0 授权调查资源，不延续上一轮生产开发。开始时 HEAD 与本地 origin/main 均为 `88efae8083c4e173b727bbe048854e939f9ddaaa`；只有本 Reference、CHANGELOG 和 PROJECT_HISTORY 三个预期文档修改。本节保留第 14 节的历史结果，不覆盖旧证据。本次临时源码、独立 csproj、模型和结果全部放在被忽略的 `artifacts/background-v02-p0`，未改 Host、SDK、生产 Engine/csproj、正式模型或已安装模组。
+
+### 配置与测量边界
+
+| 检查项 | 本次核实 |
+| --- | --- |
+| DirectML package / native runtime | Microsoft.ML.OnnxRuntime.DirectML 1.24.4；Microsoft.AI.DirectML 1.15.4；实际 ORT 1.24.4 |
+| deviceId / DXGI adapter 0 | 0；NVIDIA GeForce RTX 4060 Laptop GPU，非 software adapter |
+| GPU / driver | nvidia-smi：总显存 8188 MiB，driver 610.88；未升级驱动 |
+| CPU / RAM | i7-12650H，10 cores / 16 logical processors；34078588928 bytes RAM |
+| GraphOptimizationLevel | ORT_ENABLE_ALL |
+| DirectML Memory Pattern / ExecutionMode | false / ORT_SEQUENTIAL，原探针已满足官方要求，无需修正 |
+| Session / concurrency | 每个新进程仅一个 Session；所有 Run 复用它；并发 1；各实验依次执行 |
+| CPU provider | 同时存在；ORT 默认隐式注册 CPU EP，可能承接图分区。不等于 GPU 失败后重新在 CPU 跑整张图；本探针没有这种重试，也未统计各节点的 EP 归属 |
+| 输入/输出生命周期 | 输入是复用的托管 DenseTensor / NamedOnnxValue；Run 内部 finally 释放临时 native input OrtValue 包装；每次返回的 IDisposable 输出集合在 using 内读取后释放；最终 finally Dispose Session |
+| CPU matrix | Microsoft.ML.OnnxRuntime 1.29.0；A/B/C/D 各新进程，1 cold + 5 warm；默认线程数 0/0，未调线程 |
+
+官方依据：[DirectML 必要配置](https://onnxruntime.ai/docs/execution-providers/DirectML-ExecutionProvider.html)、[默认 CPU EP 注册实现](https://github.com/microsoft/onnxruntime/blob/rel-1.24.4/onnxruntime/core/session/inference_session.cc)、[C# Run 的输入/输出释放实现](https://github.com/microsoft/onnxruntime/blob/rel-1.24.4/csharp/src/Microsoft.ML.OnnxRuntime/InferenceSession.shared.cs)。`GetAvailableProviders` 是可用列表，不冒充节点分区分析；CPU 隐式注册另由相同版本源码核实。旧 Engine 的输入包装不实现 IDisposable，不应凭这一点判为泄漏。
+
+固定使用第 14 节定义的同一 320×256 合成 BGRA 图；反射调用未修改的生产 `Preprocess` 一次并复用 float32 `[1,3,1024,1024]` 输入。P0 直接计时 `Session.Run`，不含预处理、后处理、保存、监控或模型 SHA；Session init 同样不含 SHA，但包含 DML provider 创建。与旧 Process 总耗时、含 SHA 的 init **不可直接当作同口径提速**。模型输入尺寸没有改变；FP32 与公开 FP16 文件的实测 I/O 都是 float32，shape/name 与 V1 相同，不能因文件名推定全部算子都以 FP16 运行。
+
+Working Set、Private Bytes、GC estimate、DXGI local/nonlocal CurrentUsage 约每 100ms 采样；峰值是采样下界。每次 Run 前后另外执行 nvidia-smi。WDDM 下本进程显存列均为 **N/A**，不是零；全卡 memory.used 包括其他程序，不能冒充本进程显存。DXGI CurrentUsage 单列为进程预算记账指标，尤其超出物理显存时，**不将其写成同等大小的物理驻留 VRAM**；它与 Private Bytes/Working Set 也不能相加当作总内存。
+
+没有强制 GC、清缓存、调电源模式或关闭用户程序。每组只有一个进程序列，未随机化执行次序或控制温度，细小速度差不能推广；CPU 与 DML 的 ORT 版本不同，跨后端差异也包含版本因素。
+
+### DirectML FP32：第二次再次失败，但错误码不同
+
+相同生产 FP32 模型：224005088 bytes，SHA256 `5600024376f572a557870a5eb0afb1e5961636bef4e1e22132025467d0f03333`。进程 PID 32044，init **2937.407 ms**；请求最多 10 次，只完成第 1 次，第 2 次失败后立即退出，未执行第 3 次、未重试或切 CPU。
+
+下表 GB/MB 均为十进制；DXGI local 不是物理驻留 VRAM。
+
+| 采样点 | Run elapsed ms | WS GB | Private GB | DXGI local GB | local Budget GB | 全卡 used MiB |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| Session 前 | — | 0.0604 | 0.0334 | 0 | 7.5372 | 1099 |
+| Session 后 | — | 0.6888 | 1.1165 | 0.4855 | 7.5372 | 1564 |
+| Run 1 前 | — | 0.6894 | 1.1168 | 0.4855 | 7.5372 | 1564 |
+| Run 1 成功后 | 5369.285 | 17.8801 | 24.4094 | 23.6952 | 6.4958 | 7765 |
+| Run 2 前 | — | 17.8802 | 24.4094 | 23.6952 | 6.8895 | 7765 |
+| Run 2 失败后 | 11.353（失败耗时，非 warm 成功速度） | 17.8831 | 24.4125 | 23.6952 | 6.5248 | 7765 |
+| Session Dispose + 500ms | — | 0.4440 | 0.4430 | 0.0730 | 7.5372 | 1106 |
+
+全程采样 peak：WS **17883164672** bytes，Private **24414855168** bytes，DXGI local **23695249408** bytes，nonlocal **318328832** bytes。本进程 nvidia-smi 驻留显存未知；全卡采样点最高 7765 MiB，不伪称高频显存峰值。
+
+本次第 2 次错误：`DmlFusedNode_14_49` / `DmlGraphFusionHelper.cpp(1075)` / **0x887A0005 DXGI_ERROR_DEVICE_REMOVED**。与第 14 节的 **0x8007000E E_OUTOFMEMORY** 分开记录：重复 Run 失败复现，**相同 OOM HRESULT 未复现**。近期 System 日志对 Display / nvlddmkm 的只读查询返回 NoMatchingEventsFound；没有 GetDeviceRemovedReason / DRED / 设备分配 trace，不能确认是 TDR、驱动缺陷、某个算子或哪笔分配。
+
+当前证据支持显著资源超预算：DXGI local CurrentUsage 23.70 GB，Budget 约 6.50–7.54 GB；微软说明超预算可能导致停顿或资源创建失败（[DXGI budget](https://learn.microsoft.com/en-us/windows/win32/api/dxgi1_4/ns-dxgi1_4-dxgi_query_video_memory_info)、[D3D12 residency](https://learn.microsoft.com/en-us/windows/win32/direct3d12/residency)）。这使内存压力成为有证据的解释方向，**不等于已定位旧 18.3 秒和 OOM 的唯一因果链**。本次 Run 1 为 5.369 秒，并未复现 18.3 秒，不能提供可靠 GPU warm 数据。错误码含义见 [DXGI_ERROR](https://learn.microsoft.com/en-us/windows/win32/direct3ddxgi/dxgi-error)。
+
+### CPU FP32 Memory Matrix
+
+各组 6/6 成功；4 个新进程，PID A=31928、B=34892、C=8660、D=23292。内存 GB=10^9 bytes，Dispose MB=10^6 bytes。
+
+| 组 | CPU Arena | Memory Pattern | init ms | cold Run ms | warm median ms（n=5） | peak WS GB | peak Private GB | Dispose WS MB |
+| --- | --- | --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| A 生产默认 | on | on | 2939.122 | 5692.323 | 5317.749 | 12.4855 | 18.1519 | 120.386 |
+| B | off | on | 3024.028 | 6815.849 | 5816.997 | 6.4973 | 6.5834 | 119.599 |
+| C | on | off | 2947.935 | 5555.012 | 5129.077 | 7.6593 | 9.2751 | 122.282 |
+| D | off | off | 2978.652 | 6935.317 | 6821.960 | 6.2659 | 6.3045 | 122.237 |
+
+逐次完成时 WS GB（不是每次 Run 内部峰值）：
+
+| 组 | Run 1 | Run 2 | Run 3 | Run 4 | Run 5 | Run 6 |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| A | 7.6198 | 12.4512 | 12.4498 | 12.4549 | 12.4595 | 12.4641 |
+| B | 0.4001 | 0.4060 | 0.4105 | 0.4073 | 0.4139 | 0.4190 |
+| C | 7.6175 | 7.6235 | 7.6203 | 7.6283 | 7.6332 | 7.6379 |
+| D | 0.3985 | 0.4029 | 0.4018 | 0.4065 | 0.4108 | 0.4164 |
+
+可支持的结论：
+
+- **12.5 GB 主要受到 CPU Arena 保留与 Memory Pattern 分配策略的共同放大。** A→C 仅关 Pattern，peak WS 少约 4.83 GB、peak Private 少约 8.88 GB；A 第 2 次跃升而 C 无相应跃升，与首 Run 记录后复用分配 pattern 的机制一致（[SessionOptions 文档](https://onnxruntime.ai/docs/api/csharp/api/Microsoft.ML.OnnxRuntime.SessionOptions.html)）。尚无 allocation trace，不能精确给所有 native 分配贴标签。
+- 关闭 Arena 后 B/D 的 Run 后 WS 仅约 0.40–0.42 GB，说明数 GB 常驻保留不是输出图片列表导致。**但是推理中 peak 仍约 6.27–6.50 GB**：模型/内核中间计算与分配存在真实高峰，不能说 12.5 GB 全是“多余缓存”，也不能把剩余峰值全等同于模型 tensor 的理论下界。
+- A 第 3–6 次 WS 增加约 14.28 MB，同时 managed estimate 增加约 13.69 MB。每次复制一个约 4 MiB alpha 缓冲；旧数组已无权威引用但不强制 GC。这类短序列小幅增长与托管分配、采样波动应保留，不写成“内存完全不增长”。结合第 14 节 20-run 平台期，**未观察到 GB 级随图片数线性累积；不证明长期无泄漏或批处理安全**。
+- A/B/C/D Dispose + 500ms 后 WS 都约 120 MB，Private 约 78–83 MB；释放前 managed estimate 约 40.5–40.9 MB，释放后约 40.7–41.0 MB。主占用随 Session 生命周期释放，不是强制 GC 制造的下降。
+- 本次每组最后成功结果的 float32 alpha 全部逐字节相同，SHA256 `9C94A7A10EE3F65866EA0AA16DDC4EB4AA49D59653BA6DE26C90643A13BD640A`。仅证明此合成输入下矩阵选项未改输出，不是完整质量回归。
+
+CPU 默认 A 应标为 **Functionally Stable but Resource Heavy**。B/C/D 是资源归因实验，不是已批准的生产配置调整；不能只因某一组数字最小就更改正式 Module。
+
+### FP16 诊断：文件更小不等于所有后端更快
+
+仅下载公开的 [onnx-community/BiRefNet_lite-ONNX](https://huggingface.co/onnx-community/BiRefNet_lite-ONNX) FP16 文件到 artifacts；模型卡为 MIT。固定 revision `de15b22ba131738a16dff04aab8bdf8dc32e3ac1`，路径 `onnx/model_fp16.onnx`，**114538221 bytes**（FP32=224005088 bytes），SHA256 **`d39b897ceb16ae654c1731f3dba0cf9b368d9cae74b5a57459b455cc8bfec402`**。下载后与仓库 LFS SHA/size 核对；未转换、重导出、改图、改输入尺寸或替换生产文件。
+
+**CPU FP16：停止于首张，不能报成功或低内存。** PID 11404，ORT 1.29.0，init=3547.337ms。原请求 6 次，但进程运行 **196.738 秒** 时仍在 Run 1，成功数 **0**。按所有者“CPU 性能无意义则记录即可”的边界，核实 PID 与完整探针参数后终止该临时进程，未重启；196.738 秒是进程存活时间，**不是完成一张的推理耗时**。终止时 WS=1571618816 bytes，OS lifetime peak WS=1609195520 bytes，Private 点值=2588372992 bytes，CPU time=310.75秒。没有成功输出、warm median、完整单张 peak Private 或 Session Dispose 测量；不得拿未完成计算的约 1.61 GB 与完成 FP32 的峰值宣称节省内存。详细终止快照保留为 `results/cpu-fp16-A-interruption.json`。
+
+CPU FP16 与 DML FP16 的初始化各出现 **16 条运行时 warning**：8 个 `/bb/layers.* /Sub` 节点在两轮优化中无法以 CPU kernel 做 constant folding。这不是 build warning，也不直接等同于 Run 不支持该模型；DML 的 10 次成功与此区别相符。没有屏蔽 warning，也没有通过 graph surgery 处理。
+
+**DirectML FP16：10/10 成功，有潜力但尚未达到 V0.2 准入条件。** PID 20992，ORT 1.24.4，init=4100.379ms，同一 Session、并发 1、同一 float32 输入；没有 CPU 整图失败重试。
+
+| Run | elapsed ms | 完成 WS GB | 完成 Private GB | DXGI local GB | DXGI nonlocal GB |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| 1 | 2570.561 | 6.5583 | 12.4549 | 11.8492 | 0.1916 |
+| 2 | 2067.901 | 6.5676 | 12.4649 | 11.8502 | 0.1961 |
+| 3 | 2047.862 | 6.5743 | 12.4723 | 11.8502 | 0.1992 |
+| 4 | 2079.891 | 6.4930 | 12.4767 | 11.8502 | 0.1992 |
+| 5 | 2039.156 | 6.3062 | 12.4815 | 11.8502 | 0.1992 |
+| 6 | 2083.059 | 6.1861 | 12.4860 | 11.8502 | 0.1992 |
+| 7 | 2050.281 | 6.0222 | 12.4904 | 11.8502 | 0.1992 |
+| 8 | 2066.329 | 5.9078 | 12.4949 | 11.8502 | 0.1992 |
+| 9 | 2040.718 | 5.7962 | 12.4993 | 11.8502 | 0.1992 |
+| 10 | 2094.018 | 5.6861 | 12.5038 | 11.8502 | 0.1992 |
+
+- warm median **2066.329ms**（n=9），本机约为 CPU FP32 默认 A 的 2.57 倍吞吐；只对应同一小合成图固定 1024 模型输入，不是 Batch 性能承诺。
+- 全程 peak WS **6574669824** bytes，Private **12503818240** bytes，DXGI local **11850223616** bytes、nonlocal **199221248** bytes。相比失败的 FP32 DML，WS 少约 63.2%、Private 少约 48.8%、DXGI local 少约 50.0%；因此 **FP16 显著降低此 DML 组合资源量** 的诊断问题得到支持。
+- nvidia-smi 全卡 used：Session 前 1108 MiB、Session 后 1333 MiB、Run 后 7661–7668 MiB、Dispose 后 1168 MiB。进程显存仍为 N/A。**11.85 GB DXGI local 仍超出约 6.49–6.94 GB 运行期 Budget**，全卡 used 也接近 8188 MiB 总量；不能判为本机资源合理，更不能将 11.85 GB 当作物理驻留显存。
+- DXGI local 在 Run 2 后、nonlocal 在 Run 3 后进入平台；WS 下降。Private 在 Run 3→10 增加约 31.47 MB，同期 managed estimate 增加约 31.16 MB，与本探针逐次分配 alpha 数组相符；并非“所有内存完全不涨”，也未观察到 GB 级 native 占用逐图增加。没有长期、多输入或压力并发验证。
+- Dispose + 500ms：WS **513421312** bytes，Private **510746624** bytes，DXGI local **71839744** bytes、nonlocal **67952640** bytes。未强制 GC；Session 大量资源释放，但不能声称释放到零。
+
+### 输出差异与证据缺口
+
+比较最后成功 alpha（1024×1024，stable sigmoid 后）与 CPU FP32 A：
+
+| 比较对象 | Alpha MAE | RMSE | 最大绝对差 | Alpha 差 >0.05 的比例 | 0.5 阈值 foreground IoU |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| CPU FP32 B/C/D | 0 | 0 | 0 | 0 | 1 |
+| DML FP32（仅 Run 1 成功） | 7.18519e-8 | 1.36534e-6 | 0.0000514984 | 0 | 1 |
+| DML FP16（Run 10） | 0.0000357225 | 0.000592470 | 0.0378762 | 0 | 0.999866806 |
+
+FP16 alpha SHA256=`85D266065E0FDDDF8B7E76644E976AAA38321F18341C1D5FDDA522B60BFD390D`。还将两份 alpha 按生产相同插值/原透明度规则还原为 320×256 PNG 并逐像素读取：**RGB 81920/81920 相同**；350 像素 Alpha 有差异，最大 5/255、全图平均差 0.00687256/255。矩形中心仍为 BGRA=(30,70,210,255)，原透明角点 Alpha=0，没有从数值中发现整体前景丢失。预览工具对 FP16 PNG 的显示与像素读取不一致，故不据此声称可靠视觉验收；以以上文件与像素对照为准。
+
+这些是**合成图数值/像素检查，不是人像、商品、毛发的视觉质量验收**；没有创建正式 Test Set 或读取私人图片。CPU FP16 无输出可比。FP16 DML 的完整质量门槛仍然未验证；不能因为该矩形差异小就写成“真实输出无明显退化”。
+
+### Backend 决策与建议
+
+下表结论针对当前目标机/当前用途；PROMISING 仅指诊断价值，不表示已进入 V0.2 候选或获得生产批准。Peak RAM 默认指 WS；CPU FP16 为被中止的不完整运行，不能与完整计算直接比较。GPU 表列的全卡值不是本进程物理显存峰值。
+
+| Backend | 模型 | Warm 速度 | Peak RAM | Peak VRAM | 10-run 稳定性 | 结论 |
+| --- | --- | --- | --- | --- | --- | --- |
+| CPU | FP32，默认 A | 5.318 s | 12.49 GB | 未启用 GPU | 本次 6/6；前轮同默认 20/20，非本次重跑 10 次 | REJECTED |
+| DirectML | FP32 | 无成功 warm；cold 5.369 s | 17.88 GB | 本进程驻留 N/A；全卡采样最高 7765 MiB；DXGI local 23.70 GB | Run 2 失败，1/10 完成 | REJECTED |
+| CPU | FP16 | N/A；进程 196.738 s 时首张未完成 | ≥1.61 GB，不完整运行 OS peak | 未启用 GPU | 0/6，人工终止该探针 | REJECTED |
+| DirectML | FP16 | 2.066 s | 6.57 GB | 本进程驻留 N/A；全卡采样最高 7668 MiB；DXGI local 11.85 GB | 10/10；资源仍超预算，真实质量未验收 | PROMISING |
+
+CPU FP32 的 REJECTED 指**不适合作为低占用、通用本地默认方案**，不是功能失败；仍可按 A 方向保留为明确展示资源代价的 CPU fallback。当前默认确属 **Functionally Stable but Resource Heavy**。DML FP32 V0.2 Candidate=**REJECTED**。DML FP16 已证明能跑及显著降资源，但资源合理性、真实质量门槛未过，**不准入 V0.2**，也不开始硬修图。
+
+建议选择 **A + D**：保留现有 FP32 CPU 作为明确的后备能力；下一轮优先 Model Comparison，寻找符合本地资源预算的方案。B（FP16 DML 直接进入 V0.2）证据不足；C（整体放弃 DirectML）也不应仅凭 FP32 失败作结，因为 FP16 已有 10-run 成功证据。本轮不实施任何建议，不更换后端、正式配置、模型或 SDK。
+
+### 本次实际验证与保留资产
+
+执行命令（repo 参数为本仓库绝对路径）：
+
+```powershell
+dotnet build .\artifacts\background-v02-p0\cpu\CpuP0.csproj -c Release
+dotnet build .\artifacts\background-v02-p0\gpu\GpuP0.csproj -c Release
+dotnet .\artifacts\background-v02-p0\gpu\bin\Release\net10.0-windows\win-x64\GpuP0.dll <repo> fp32 gpu A 10
+# A/B/C/D 顺序各一个新进程，均成功：
+dotnet .\artifacts\background-v02-p0\cpu\bin\Release\net10.0-windows\win-x64\CpuP0.dll <repo> fp32 cpu <A|B|C|D> 6
+# 首次 Run 长时间未完成，PID 核实后终止，未重跑：
+dotnet .\artifacts\background-v02-p0\cpu\bin\Release\net10.0-windows\win-x64\CpuP0.dll <repo> fp16 cpu A 6
+dotnet .\artifacts\background-v02-p0\gpu\bin\Release\net10.0-windows\win-x64\GpuP0.dll <repo> fp16 gpu A 10
+.\artifacts\background-v02-p0\analyze.ps1
+dotnet build .\AddToolBox.sln --artifacts-path .\artifacts\background-v02-p0\host-build
+```
+
+CPU/GPU 探针首次 build 各有一个 CS9191 警告（QueryInterface 的 ref/in 签名），仅修正临时采样器参数后，两项目重新 build 均 **0 warnings / 0 errors**。未修改推理逻辑去重试失败 GPU。最终完整 solution 独立输出 build **0 warnings / 0 errors**，仅验证 Host solution 编译，不冒充独立 Module 集成、UI 或 Batch 验收。FP16 runtime 的 16+16 条 constant-folding warning 与这项 build 结果分开保留。
+
+探针数据包括每组 JSONL、CPU FP16 终止记录、DML FP16 console 日志、最终成功 alpha/PNG 和派生分析；全部留在被忽略的 artifacts，未纳入 Git。临时 FP16 模型也留在该目录便于证据复核，未动第 14 节遗留 artifacts 或用户安装目录。P0 未执行生产代码修复、Git add/commit/push 或任何其他 Git 写操作。
+
+最终只读检查：`git diff --check` 通过（有 LF 将转 CRLF 的行尾提示，不是 build warning）；`git status --short --untracked-files=all` 仍只有上述三个 M 文档，暂存区为空；`git diff --exit-code -- src modules AGENTS.md ARCHITECTURE.md` 为空。HEAD / origin/main 仍为 `88efae8`，正式 FP32 SHA 未变。按进程名和探针命令行核对，本轮及此前相关 Probe 在后台的数量为 **0**；未关闭用户 Host 窗口。
