@@ -275,6 +275,8 @@ A 失败
 
 只有满足任务明确验收条件后才能宣称完成。
 
+任务结束前必须完成第 23 节 Change Documentation 评估。应更新的变更记录属于同一任务的 Definition of Done；尚未更新时，不得宣称任务完成。
+
 最终报告至少说明：
 
 - 修改了什么
@@ -500,3 +502,75 @@ A 失败
 如任务需要凭据，优先使用安全的外部配置方式。
 
 不得自行创建真实凭据。不得因为缺少凭据而伪造“已经验证成功”。
+
+## 23. Change Documentation
+
+### 记录职责与触发条件
+
+开始功能、行为、架构或重要研究任务时，读取 `CHANGELOG.md` 和 `docs/PROJECT_HISTORY.md` 中的相关记录，确认既有决策、退役方向与当前状态。
+
+任何任务结束前都必须评估这两个文件是否需要更新。出现以下任一情况时，必须进行对应的变更记录维护：
+
+- 新增或删除用户可见功能
+- 功能进入 Deprecated / Retired 状态
+- 重要交互或产品行为改变
+- 架构方向改变
+- 新增或移除项目、增加/移除/替换/升级依赖
+- Module / SDK Contract 或其他公共 API 改变
+- 数据、配置或持久化格式改变
+- 重要技术研究的结论影响后续产品方向
+- 对产品或开发者有实际意义的 Bugfix
+
+“自动记录”指每个开发者或 AI 必须在当前任务内完成评估、必要更新和最终报告，不依赖临时记忆。此规则本身不代表已经安装日志生成脚本、Git hook 或 CI 检查。
+
+### CHANGELOG.md：有意义的变化
+
+用简短条目记录产品或开发者需要知道的变化，按 `Added`、`Changed`、`Removed`、`Fixed`、`Research / Technical Milestone`、`Deprecated / Retired` 分类。
+
+例如新增 Mouse Wheel Zoom、Pan 按键改变、移除 Automatic Compaction、修复 Resize 改写 WorldPosition。普通但有用户影响的 Bugfix 通常只更新 CHANGELOG。
+
+未正式 Release 时维护 `Unreleased`，早期阶段保留在 `Historical Milestones`；正式 Release 后按真实 Release 版本切分，不虚构版本或发布日期。
+
+### docs/PROJECT_HISTORY.md：重要演化与决策
+
+以下情况必须更新详细历史：
+
+- 重要功能第一次建立或正式取消
+- 产品方向改变，或原架构被另一架构替代
+- 大型研究虽未上线，但结论影响项目方向
+- 需要保留原因、替代方案、后续影响，以回答未来开发者“为什么当初不这样做”
+
+只记录 Milestone / Decision / Retired Direction / Significant Research，说明做了什么、为什么、结果、状态和证据。退役记录保留原因及研究价值，不把旧方向继续列为当前功能。
+
+不得按每个 Commit 机械追加长文。纯格式化、私有变量改名、无行为变化的内部重构、普通注释、临时 Probe、单次 build 命令等，通常不更新两份日志；若 Probe 形成影响产品方向的重要结论，则记录结论而非执行流水。
+
+### 同任务更新与授权边界
+
+必要的日志更新属于当前任务的 Definition of Done，必须与对应代码或决策在同一任务中完成。不得以“以后再补日志”结束应记录的任务。
+
+这两份日志中与当前任务直接相关的必要维护，属于本制度要求的常规文档范围；仍受任务范围、文档真实性和未提交工作保护约束。日志维护不授权修改 `AGENTS.md`、`ARCHITECTURE.md`、生产代码、依赖或系统环境，也不授权 Git 写操作。
+
+记录架构方向不能替代架构审批；`ARCHITECTURE.md` 仍是架构约束的权威文件。发现既有文档与代码不一致时，明确记录差异和证据，不通过历史文件重新定义架构或绕过第 5、12、16、20 节规则。
+
+### 证据、状态与日期
+
+- 依据真实 Git、仓库文件、当前工作树和项目所有者明确提供的事实，不从 Commit 标题猜实现。
+- 已提交历史使用经验证的 short hash + commit subject，必要时附完整 hash；历史时间轴采用 Git Commit Date，并注明时区。
+- 当前未提交工作标为 `Uncommitted / In progress`，不得虚构未来 Hash，也不得描述为已发布。
+- 区分已实现、仅静态核实、已 build、已测试、已运行、Planned / Current direction、Research、Superseded、Retired；build 成功不能证明交互或研究结果。
+- 不能精确定位早期决策时，标为 `Owner-confirmed design decision; exact commit not isolated.`。日期只能取真实提交日期或明确的当前记录日期，不能根据文件时间猜发生日期。
+- 所有者提供的研究数字须注明来源；缺少原始报告、测试输入或复现证据时明确说明，不把历史报告写成本次测试结果。
+- 有 Removal 决定但代码未完成移除时，记录 `Decision: retiring / removal in progress`；调用链移除、算法源码保留和整个功能删除应分别说明。
+- 不为补日志 amend、rebase、reset、改写旧提交、打 Tag、自动暂存或提交。
+
+### 完成检查与最终报告
+
+检查两份日志之间的状态、日期和链接是否一致，并对照当前代码及 README；仅维护有意义的条目，避免重复。修改后执行 `git diff --check`，并检查未跟踪的新文档；生产修改的 build / test 要求仍按第 14 节执行。
+
+每次任务最终报告必须包含以下两行，并给出具体原因；`NO` 不能用于推迟本应完成的更新：
+
+```text
+Change documentation:
+- CHANGELOG updated: YES/NO + reason
+- PROJECT_HISTORY updated: YES/NO + reason
+```
