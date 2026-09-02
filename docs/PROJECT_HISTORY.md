@@ -22,6 +22,22 @@ addToolBox 是 Windows-first、C# / .NET 10 / WPF 的本地模块化工具箱与
 
 ## 历史时间轴
 
+### 2026-09-03 — Module System V0.1 + First Official Module
+
+状态：**已实现，build / 自动检查通过，Owner-confirmed manual acceptance**。起点为已人工验收且推送的 `24948e8 feat: establish world canvas host baseline`，文档制度独立基线为 `4b26a0a`；本轮 Host/SDK 与 Module/Reference 分别提交，不与 V0.2 混合。
+
+Host/SDK Commit：`c0da1f5591dce9eb19c3f3763775247141718f0a feat: establish module system v0.1`，10 个文件。第一个模组与 Reference 使用单独的 `feat: add background remover module v0.1` 提交，不预填其自身 Hash。
+
+本轮按所有者明确批准的高风险范围首次实现 WPF-free `ToolViewType` SDK 契约、Manifest Metadata SSOT、人工导入、独立 ALC、启动发现与动态 Tile；未修改 Core、Workspace Interaction / WorldCanvas 算法或治理文件。架构文档的“尚未实现 Module”描述仍是已提交 Host 基线快照，不把本文当作架构变更授权。
+
+第一实际模组选择“去背景”，因为它同时验证自定义 UI、大模型资源、私有 native/managed 依赖、图片 IO、后台重计算和缓存 View/Session 生命周期。它是独立工程，只引用 SDK，固定 ONNX Runtime 1.29.0 CPU 和外部 BiRefNet Lite ONNX 模型，不把模型放入 Git。
+
+当前证据：Host / 独立 Module build 均 0 warnings / 0 errors；真实固定模型的合成图片 Pipeline Smoke Test 25 项、隐藏 Host 集成 15 项通过。所有者随后明确回复“通过”，确认人工功能清单；逐图质量记录则明确要求“暂时不方便，跳过”，因此未提供尺寸/评分/缺陷明细，不把合成图当作质量优秀的证据。
+
+已建立 [MODULE_DEVELOPMENT_REFERENCE_V1](MODULE_DEVELOPMENT_REFERENCE_V1.md)：19 文件约 241.32 MB 的 Package、三组各 3 次 warm build、实际启动/安装复制/加载、1 cold + 3 warm CPU 推理、Working Set / CPU 近似值及 11 类错误探针。冷 Session 初始化约 3.99 s，温 Process median 约 5.78 s；探针进程工作集峰值约 12.60 GB。数据说明重型模组运行内存显著高于磁盘模型大小，后续应据此评估硬件后端和生命周期，而非提前扩 SDK。
+
+合成 PNG 与完整测试安装复制已清理；17 个错误夹具的递归清理被执行策略拦截，保留在已忽略的 artifacts，未修改用户安装包、不进入提交，详见 Reference。五个 Prototype Tile 已在 Host 基线删除，不重复归入本轮修改。V0.2 Batch/GPU 仍未实施。
+
 ### 2026-08-31 — Governance V1
 
 状态：**Active**。
@@ -306,7 +322,7 @@ Host 收口源码确认旧 `ScheduleAdaptiveResize` / `ApplyAdaptiveResize` 及�
 
 未来 World Canvas 可能承载 Note、Text widget、CPU / GPU monitor、Clock、Information Card、Image decoration、Shortcut、Module-provided widget。**当前没有提前建立公共 WorkspaceItem 抽象，也没有这些非 Tool Item 的实现。** 等第一个非 Tool Item 有真实需求和实现范围时，再按治理流程设计。
 
-位置持久化、真实业务工具、Module 加载/安装、主题系统、设置及发行安装方案仍未在当前仓库实现；不能从原型入口、预留项目或候选技术说明推定这些能力存在。
+此表保留 Host Baseline 时点的状态；后续真实工具与 Module 加载/安装已由本文的 Module V0.1 里程碑实现。位置持久化、主题系统、设置及发行安装方案仍未实现，不能从预留项目或候选技术说明推定这些能力存在。
 
 ## 既有文档差异与证据缺口
 

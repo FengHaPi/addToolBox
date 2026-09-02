@@ -2,12 +2,15 @@
 
 记录对用户和开发者有意义的变化，不逐条复制 Git Log。详细原因、研究数据和证据边界见 [PROJECT_HISTORY](docs/PROJECT_HISTORY.md)。
 
-截至 **2026-09-03**，World Canvas Host Baseline 已通过 build、模型与空画布检查、实际窗口启动验证，并由项目所有者确认人工验收通过，作为进入 Module 开发前的正式 Host 里程碑。它不是正式用户 Release，不创建 Tag；正式 Release 后再按真实版本归档。
+截至 **2026-09-03**，World Canvas Host Baseline 之后的 Module System V0.1 与首个去背景模组已通过 build、自动检查与所有者人工功能验收，并完成 [Module Development Reference V1](docs/MODULE_DEVELOPMENT_REFERENCE_V1.md) 测量记录。逐图质量明细按所有者要求跳过；这不是正式用户 Release，不创建 Tag。
 
 ## Unreleased
 
 ### Added
 
+- Module System V0.1：WPF-free SDK View Type Contract、Manifest Metadata SSOT、人工文件夹导入、已安装模组启动发现、独立 managed/native ALC、动态 World Canvas Tile 与缓存 View。
+- 第一个正式模组 Background Remover V0.1：ONNX Runtime 1.29.0 CPU、固定 SHA 的外部 BiRefNet Lite、PNG/JPEG/BMP 单张输入、本地后台去背景和透明 PNG 保存；Host 无模组工程引用。
+- Module Format V1 与 Module Development Reference V1，记录真实构建/Package/导入/加载/推理/资源数据、错误矩阵和下一 Module Checklist。CPU FP32 探针进程工作集峰值约 12.60 GB，V1 缓存 Session；这是需要后续评估的已知资源限制，不等于模型磁盘大小。
 - 建立简洁 CHANGELOG、详细 PROJECT_HISTORY，以及 [AGENTS Change Documentation](AGENTS.md#23-change-documentation) 同任务更新制度，已独立提交：`4b26a0a docs: establish project history and change documentation policy`。
 - World Canvas：Tool 世界坐标与 WorldLayer 相机投影；默认空 Workspace 合法。
 - Middle Mouse Pan：空白或对象上的中键拖动移动 Viewport。
