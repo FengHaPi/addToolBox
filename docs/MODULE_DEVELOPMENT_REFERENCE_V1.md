@@ -303,6 +303,8 @@ V0.2 的 Batch、Auto/GPU/CPU、DirectML、性能开关、标准真实图片集�
 
 ## 14. V0.2 backend gate
 
+记录状态更新：本节与 P0 记录在 P1 前置收口中由 `635bb60 docs: record background remover backend investigation` 独立提交并推送。以下保留原调查时点的工作树与命令记录，不代表 P1 仍停留在 `88efae8`。
+
 **2026-09-03 / Research / Blocked / Uncommitted。** 本节不是 V0.2 已实现或通过验收的记录。开始前 `git status --short` 为空；HEAD、本地 origin/main、`git ls-remote origin refs/heads/main` 均为 `88efae8083c4e173b727bbe048854e939f9ddaaa`。生产代码/模型/依赖和已安装 V0.1 均未更改。
 
 ### 检查方法
@@ -408,6 +410,8 @@ dotnet .\artifacts\background-v02-cpu-baseline\bin\Release\net10.0-windows\win-x
 **清理未完成：** 已验证三个本轮专用 artifacts 目录的绝对路径、文件清单和无 reparse point；随后递归删除被执行策略在进程启动前拦截，未换工具绕过、未删除任何已有夹具。保留：`background-v02-backend` 38 文件 / 51636288 bytes，`background-v02-cpu-baseline` 34 文件 / 17353348 bytes，`v02-gate-host-build` 120 文件 / 1338911 bytes；共 **192 文件 / 70328547 bytes**，均被 Git 忽略。它们是探针源码/构建输出，不含用户图片或新下载模型；NuGet 标准缓存亦未清理。原 V0.1 临时夹具继续不动。后续不得把这次状态写成“临时文件已全部清理”。
 
 ## 15. V0.2-P0 resource investigation
+
+记录状态更新：本节已随 `635bb60` 封存并推送；以下的 Uncommitted / HEAD 描述是 **P0 调查结束快照**。P1 是后续独立研究，尚无生产模型或后端变更。
 
 **2026-09-03 / Research / Uncommitted；不是 V0.2 生产实现或人工验收。** 按所有者新的 P0 授权调查资源，不延续上一轮生产开发。开始时 HEAD 与本地 origin/main 均为 `88efae8083c4e173b727bbe048854e939f9ddaaa`；只有本 Reference、CHANGELOG 和 PROJECT_HISTORY 三个预期文档修改。本节保留第 14 节的历史结果，不覆盖旧证据。本次临时源码、独立 csproj、模型和结果全部放在被忽略的 `artifacts/background-v02-p0`，未改 Host、SDK、生产 Engine/csproj、正式模型或已安装模组。
 
@@ -566,3 +570,118 @@ CPU/GPU 探针首次 build 各有一个 CS9191 警告（QueryInterface 的 ref/i
 探针数据包括每组 JSONL、CPU FP16 终止记录、DML FP16 console 日志、最终成功 alpha/PNG 和派生分析；全部留在被忽略的 artifacts，未纳入 Git。临时 FP16 模型也留在该目录便于证据复核，未动第 14 节遗留 artifacts 或用户安装目录。P0 未执行生产代码修复、Git add/commit/push 或任何其他 Git 写操作。
 
 最终只读检查：`git diff --check` 通过（有 LF 将转 CRLF 的行尾提示，不是 build warning）；`git status --short --untracked-files=all` 仍只有上述三个 M 文档，暂存区为空；`git diff --exit-code -- src modules AGENTS.md ARCHITECTURE.md` 为空。HEAD / origin/main 仍为 `88efae8`，正式 FP32 SHA 未变。按进程名和探针命令行核对，本轮及此前相关 Probe 在后台的数量为 **0**；未关闭用户 Host 窗口。
+
+## 16. V0.2-P1 Model / ONNX Export Comparison
+
+**2026-09-03 / Research / Owner visual acceptance PASSED；收口记录 Uncommitted，待独立提交。** 本轮先逐文件审核、暂存并提交P0三份文档：`635bb60361de9be7ca014dea516e8f006b0b275e docs: record background remover backend investigation`，2026-09-03 04:49:35 +08:00，已推送GitHub。使用命令级临时Git身份，未写local/global配置；P1开始时HEAD、origin/main、远端main一致且树干净。原P1研究未提交、未修改生产代码；所有者现明确批准先收口P1文档和测试集定义，独立build/commit/push，干净断点后才进入V0.2生产开发。以下P1数据仍是研究探针结果，不是生产Integration测量。
+
+### 16.1 模型身份、来源与图
+
+| Candidate | 来源 / 固定 revision | bytes | SHA256 |
+| --- | --- | ---: | --- |
+| A：现有BiRefNet Lite FP32 | [onnx-community/BiRefNet_lite-ONNX](https://huggingface.co/onnx-community/BiRefNet_lite-ONNX/tree/de15b22ba131738a16dff04aab8bdf8dc32e3ac1)，`de15b22ba131738a16dff04aab8bdf8dc32e3ac1`，onnx/model.onnx | 224005088 | `5600024376f572a557870a5eb0afb1e5961636bef4e1e22132025467d0f03333` |
+| B：同模型不同导出 | [CoderViking/birefnet-lite-onnx](https://huggingface.co/CoderViking/birefnet-lite-onnx/tree/dc06453148f01ef4131f17e9b791345e32e8ee78)，`dc06453148f01ef4131f17e9b791345e32e8ee78`，birefnet-lite-1024.onnx | 199681624 | `50a57872cc739192446da2a934159f957c81af8b5a161dfda8e3daa51660ca67` |
+| C：官方BEN2 Base | [PramaLLC/BEN2](https://huggingface.co/PramaLLC/BEN2/tree/e48a20765fb421d19dcdb0bf3cc61e802ca5ec8f)，`e48a20765fb421d19dcdb0bf3cc61e802ca5ec8f`，BEN2_Base.onnx | 222932053 | `22cea62108ff53b7ccc20f7a008bf30494228d84b1687f29ecbe76936a998101` |
+
+三者来源声明MIT。B exporter记录的上游是ZhengPeng7/BiRefNet_lite revision `7838f1c3472f827cd8ce13ab5ccc2ce48077360f`，model.safetensors SHA=`4417d89795250e698c3cb0ae8df15743810065f646f48a694fdfa7ca052d0815`，已与固定revision API核对。未运行exporter、未下载PyTorch权重、未自行转换图。B/C ONNX仅进入被忽略的artifacts，正式A文件SHA未变。
+
+| 序列化图实测 | A | B | C |
+| --- | ---: | ---: | ---: |
+| Node / Initializer | 16400 / 437 | 6129 / 969 | 13328 / 513 |
+| Opset / Producer PyTorch | 17 / 2.0.1 | 17 / 2.8.0 | 15 / 2.5.1 |
+| GatherND / ScatterND | 80 / 72 | 0 / 0 | 0 / 36 |
+| GridSample | 0 | 300 | 0 |
+| Shape / Constant | 412 / 7296 | 11 / 0 | 569 / 5286 |
+
+A/B外部输入**原本都是静态**`input_image FP32 [1,3,1024,1024]`；输出都是`output_image FP32 [1,1,1024,1024]` logits。B的关键变化是GridSample-based deformable-convolution decomposition、折叠/精简/去重和内部图结构，不是把A的动态输入改静态。268个同名initializer原始值全同；忽略名称比较，A的437个initializer中377个raw hash在B出现，共158787400/178489160 bytes。折叠/分解后其余项不能据此证明全图等价。只读protobuf检查负责统计，实际ORT Session加载另验证可执行性。
+
+### 16.2 Pipeline 与数值门槛
+
+合成A/B固定输入直接反射未改的生产Preprocess：320×256 BGRA矩形→half-pixel bilinear→RGB NCHW /255 /ImageNet→1024²。输入SHA=`7AF96DA3AD0380DCEEA5D14715D9BE3F048B430FF68C139D0831A58F2D9A957C`。当前生产后处理仍是稳定sigmoid、双线性恢复、乘原alpha。
+
+真实标准图A/B均使用上游推荐的PIL bilinear resize + ImageNet mean/std；二者tensor完全一致，但PIL antialias与生产自写resize并非逐bit一致。因此真实图是受控导出比较，不声称是生产UI原样回放。输出共同做sigmoid、双线性恢复、原alpha乘法，未加入阈值/形态学/去色边。
+
+C实测输入`input.1 FP32 [1,3,1024,1024]`，输出`17728 FP16 [1,1,1024,1024]`。[官方ONNX脚本](https://huggingface.co/PramaLLC/BEN2/blob/e48a20765fb421d19dcdb0bf3cc61e802ca5ec8f/onnx_run.py)使用PIL Resize /255，不用ImageNet normalization或外加sigmoid；输出先F.interpolate到脚本传入的`[width,height]`、min-max、uint8截断，再PIL resize回原尺寸并替换alpha。本次保留其特殊宽高顺序，未擅自修正。临时NumPy实现保留FP16中间舍入，通过常量/恒等/中心采样检查；未安装PyTorch，**没有验证与Torch逐bit一致**，是质量比较限制。
+
+合成A/B alpha：MAE=**0.00010149898**，RMSE=**0.00185693271**，max=**0.12861445546**；P50=4.15686e-7，P90=1.31130e-6，P95=1.89030e-6，P99=0.0003078965，P99.9=0.0338496104。>1/255像素比例0.5046%。差异图x100保存，非主观评分。
+
+| 真实图A/B | MAE | RMSE | Max | P99 |
+| --- | ---: | ---: | ---: | ---: |
+| 普通人像 | 0.000254340 | 0.001719809 | 0.091227800 | 0.008481503 |
+| 发丝 | 0.000490728 | 0.006776193 | 0.641342804 | 0.012153313 |
+| 相机商品 | 0.000106372 | 0.002497309 | 0.555283770 | 0.000194974 |
+
+16图MAE范围0.0000656–0.0021615，最大MAE出现在自行车细结构；透明难例局部max=0.956769。**低均差不代表边缘完全等价**，主体/细节/残背景/Halo的1–5数值评分仍未填写；所有者另已提供16.5节的定性替换验收。B CPU/DML六图alpha MAE6.28e-8–2.71e-7、max≤0.000133693；四个重复GPU输入B原始输出bit-identical，BEN2则不一致（raw FP16 max差0.0078125–0.0124512），仅作为数值稳定性注记，不冒充肉眼缺陷结论。
+
+### 16.3 性能与资源
+
+与P0同一RTX4060 Laptop / 8188MiB / 驱动610.88。CPU ORT1.29.0；DML ORT1.24.4 + Microsoft.AI.DirectML1.15.4，版本不相同。单Session/单并发；DML关闭MemoryPattern、ORT_SEQUENTIAL。各推理进程不重叠；约100ms采样WS/Private/DXGI，峰值可能漏掉更短尖峰。Session.Run计时不含预处理、后处理、SHA、保存或输入读盘；init不含SHA和此前provider append。不是完整Host延迟，也未调线程/强制GC/trim。
+
+| CPU合成对照 | Init / Cold s | Warm median / max s | 次数 | Peak WS / Private GB | Dispose WS / Private GB |
+| --- | --- | --- | --- | --- | --- |
+| A | 3.4875 / 5.8087 | 5.9564 / 5.9572 | 1 cold +3 warm | 12.5663 / 18.2346 | 0.1667 / 0.1296 |
+| B | 2.1341 / 2.6837 | 2.6213 / 2.6485 | 1 cold +5 warm | 3.4729 / 4.8776 | 0.1646 / 0.1254 |
+| C，实际为真实人像首图 | 1.7702 / 未完成 | 无 | 0成功，60.0927秒停止 | ≥3.0781 / ≥3.6849，未完成下界 | 无，探针退出 |
+
+标准6图固定为portrait-normal、hair-fine、animal-fur、product-hard-edge、complex-background、low-contrast（6000×4000高分辨率角色）。各候选同序，不换图绕过失败。
+
+| 固定六图 | Cold +5 Warm，每图ms | Warm median ms |
+| --- | --- | ---: |
+| A CPU | 5728.768, 5776.774, 5667.159, 5640.846, 5357.064, 5549.507 | 5640.846 |
+| B CPU | 2631.012, 2544.172, 2540.188, 2609.345, 2497.106, 2526.566 | 2540.188 |
+| B DML | 462.054, 342.841, 330.531, 325.832, 325.188, 321.716 | 325.832 |
+| C CPU | 首图超过60秒，后五图NOT RUN | N/A |
+| C DML | 659.323, 554.799, 555.827, 551.793, 548.477, 554.372 | 554.372 |
+
+A/B CPU还各完成其余10张不同质量图：16图全过程peak WS 12.5635/3.4726GB，Dispose后0.1570/0.1503GB。不是重跑20次合成扫描。以下GPU各至多10 Run（六图+前四图重复），不使用额外Run做质量补齐：
+
+| DML | Init / Cold s | Warm median / max s | 成功 | Peak WS / Private GB | DXGI Local peak / budget GB | Dispose WS / Private GB |
+| --- | --- | --- | --- | --- | --- | --- |
+| B | 4.2168 / 0.4621 | 0.3232 / 0.3428 | 10/10 | 1.3025 / 7.2142 | 5.9618 / 6.7915–7.5372 | 0.8612 / 0.8734 |
+| C | 2.5369 / 0.6593 | 0.5548 / 0.5646 | 10/10 | 1.0437 / 4.7860 | 3.7819 / 7.5372 | 0.6190 / 0.6141 |
+
+每次Run的时间/WS/Private/DXGI记录在本地JSONL，未只留汇总。安全监控定义显著GPU预算超限为local>budget×1.10且超出>256MiB；另有GPU WS>8GB停止线。CPU BEN2>60s或>8GB即退出本探针，不重试、不进入后续Run；该CPU停止已实际发生。B/C GPU没有触发预算线、OOM或Device Removed。C有两行运行时warning提示部分节点未分配首选EP；未做节点分区profiling，**不能宣称全图GPU执行**。没有错误后转CPU整图重试。
+
+WS不是总资源：B DML的Private达7.21GB、DXGI local达5.96GB，距本机预算不远。DXGI是WDDM进程记账，nvidia-smi的本进程物理显存N/A不是0；全卡使用量也不是本进程值。不可把这些口径直接相加或把WS1.30GB说成总内存只有1.30GB。Dispose仍有进程级资源，未做heap trace，不能直接认定泄漏。A危险FP32 DML不重跑，引用P0第二次device-removed/peak WS17.88GB历史证据，无本轮GPUwarm值。
+
+### 16.4 标准集、质量资产与Package
+
+[testset.json](../dev-assets/background-removal-testset/testset.json)是图片SSOT；16张（15照片+1插画），覆盖16类（category + additionalCategories），2 Public Domain、1 CC0、1 CC BY2.0、12 CC BY-SA。逐张记录作者、许可、源页/下载URL、SHA、真实尺寸、预期检查重点。Commons原图端点限流并明确建议预设缩略图后，3张选择官方1920px版本并标明；其余13张保持原图，固定性能高分辨率角色24MP、发丝36.15MP。原图总览发现项链实际是灰渐变背景，已修正分类；白底商品由Nikon相机覆盖，不按旧采集ID猜分类。
+
+可入Git仅README、testset.json、prepare-testset.ps1、results-template.md；images/加入.gitignore。准备脚本只负责显式下载/校验，正确文件跳过，错误立即报告，保留损坏旧文件和失败partial，不自动重试/改许可/绕过TLS；普通build不下载测试图。本次通过16/16 VerifyOnly和普通调用skip分支，**未重新在空目录完整跑最终下载脚本**。
+
+本地 `artifacts/background-v02-p1/` 包含模型、隔离源码/csproj、graph JSON、逐Run JSONL、原始输出、对比报告与数值差异图。`results/baseline`16张、`results/birefnet-static`16张、`results/ben2`6张透明PNG；每张另有深灰/白底合成，总计76张完整尺寸Halo预览。`quality-comparison/`有32张横向对比（每case深/白两张）；C未运行的10个case标NO OUTPUT，未复制A/B充数。透明PNG尺寸、RGB不变和两种背景精确合成自动检查通过；人工评分留空。Agent抽看普通人像/发丝/商品不等于所有者验收。
+
+模型均≤300MB；B模型比A小24.323464MB，C小1.073035MB。按本地现有19文件Release目录241320225bytes只替换模型估算，CPU Package分别约216.997MB/240.247MB，不是候选真实打包结果。已有缓存的DML运行DLL组合比CPU约多19.702MB，debug/PDB/notices/最终打包规则另计；未决定同时打包两套ORT，也未改ALC/Module契约。
+
+### 16.5 决策、验证与未完成门槛
+
+- **A：Resource Heavy；默认低资源候选REJECTED（WS>8GB），现有生产保留不动。** 本次再次确认约12.6GB风险，不依据高WS称为泄漏。
+- **B：Production Approved Candidate；Owner visual acceptance = PASSED。** 所有者2026-09-03明确确认：普通人物、发丝、商品硬边通过；逆光发丝、transparent hard case、thin structure未见相对A的明显新增退化。未发现足以拒绝生产替换的明显视觉退化，批准KEEP MODEL / CHANGE EXPORT。这是qualitative owner acceptance，未提供或虚构1–5评分；不承诺所有透明物体、发丝、细结构完美，不代表尚未执行的V0.2集成已验收。
+- **C：GPU研究可行，CPU后备门槛失败。** 六图质量和官方后处理逐bit验证不完整，不能声称BEN2细节更好或STRONG CANDIDATE。不得仅凭较低GPU记账直接替换。
+- **D未测试：** B已有合理结果，没有触发InSPyReNet备用条件；未扩大模型范围。
+- **归因：** 同CPU/runtime/固定输入的WS降低约72.4%，加上同权重来源及图差异，支持ONNX export/执行结构是重要因素；不是证明某一算子是全部根因或整个模型家族不可用。
+- **Future Candidate：Simple-background Fast Path。** 高置信度纯色/白底未来可评估传统算法，复杂图再跑模型；本轮仅记录，不实现。
+
+完整本地对比表与原研究缺口：`artifacts/background-v02-p1/MODEL_COMPARISON.md`；研究资产被忽略，历史报告不反写成生产数据，不在Git中虚构可随clone获得的原始测试结果。定性验收另记录于本节和标准集评分模板。C的剩余10张未运行，Torch后处理bit-exact、低显存设备/长时批处理稳定性、V0.2 Host集成/UI仍未验收。获准的后续工作先验证单一ORT runtime与B模型的CPU/GPU Runtime Gate，再做生产回归与Batch；达到停止条件则停止，不能用P1成绩替代。
+
+实际关键命令：
+
+```powershell
+dotnet build .\artifacts\background-v02-p1\cpu\CpuP1.csproj -c Release
+dotnet build .\artifacts\background-v02-p1\gpu\GpuP1.csproj -c Release
+# CPU：A 4次合成、B 6次合成、A/B各16张不同图片、C首图安全终止；每job独立进程。
+& .\artifacts\background-v02-p1\cpu\bin\Release\net10.0-windows\win-x64\CpuP1.exe <repo> <job.json>
+# B/C各一个10-run DML job；A不重跑。
+& .\artifacts\background-v02-p1\gpu\bin\Release\net10.0-windows\win-x64\GpuP1.exe <repo> <job.json>
+.\dev-assets\background-removal-testset\prepare-testset.ps1 -VerifyOnly
+.\dev-assets\background-removal-testset\prepare-testset.ps1
+& <bundled-python> .\artifacts\background-v02-p1\validate-results.py
+dotnet build .\AddToolBox.sln --artifacts-path .\artifacts\background-v02-p1\host-build
+git diff --check
+git status --short --untracked-files=all
+```
+
+两临时项目的默认正常build及最终五项目Host solution独立build均**0 warnings / 0 errors**。最初临时项目`--no-restore`因无assets.json出现NETSDK1004，正常已有缓存restore后通过；没有生产代码修复。BEN2的两行native EP warning与build分开记录。输出自动检查为38透明PNG/76合成PNG、16类覆盖；没有新增测试框架或冒称UI测试。原P1研究结束时所有推理/生成/检查进程已退出，生产目录和正式模型未改，仅留下三份文档、.gitignore及四个测试集文件的未提交修改，暂存区为空。
+
+2026-09-03 P1收口复核：`dotnet build .\AddToolBox.sln --artifacts-path .\artifacts\background-v02-production\p1-closeout-host-build`通过，**0 warnings / 0 errors**；`prepare-testset.ps1 -VerifyOnly`重新核实16/16 SHA，`git diff --check`通过。此次仅更新所有者定性验收记录，没有重跑P1模型或补BEN2缺失图。Git提示的LF→CRLF工作树转换告知不属于编译warning。按授权仅逐文件暂存8个Git-eligible文件后独立提交，模型、图片、输出和artifacts不纳入。

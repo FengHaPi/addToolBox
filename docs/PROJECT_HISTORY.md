@@ -22,9 +22,25 @@ addToolBox 是 Windows-first、C# / .NET 10 / WPF 的本地模块化工具箱与
 
 ## 历史时间轴
 
+### 2026-09-03 — Background Remover V0.2-P1 模型与导出比较
+
+状态：**Research / Owner visual acceptance PASSED（2026-09-03）；收口记录 Uncommitted，待独立提交**。P0 三份文档先独立提交推送为 `635bb60`，核实干净工作树后才开始 P1。研究只使用已有 ONNX Runtime 版本与隔离 artifacts，不改生产 Module、模型、Host、SDK、依赖或安装包。
+
+方向性证据：A/B 都是静态外部输入 `[1,3,1024,1024]`，并非简单把动态输入固定。B 的 GridSample 导出将节点数 16400→6129，GatherND/ScatterND 80/72→0/0；同一 CPU 1.29.0、相同生产预处理合成输入下，peak WS 12.566→3.473 GB，warm median 5.956→2.621秒。B DML 在 RTX4060 Laptop 上 10/10 成功，warm median 0.323秒，peak WS 1.302 GB / Private 7.214 GB / DXGI local 5.962 GB。这支持导出及执行结构对资源代价有重要影响，不证明某一算子是唯一根因，不把低工作集称作泄漏已修复；GPU资源仍非“只有1.3GB”。
+
+正确性门槛未被内存优势替代：A/B 合成 alpha MAE 0.0001015、max 0.1286；16 张真实图仍有局部明显数值差异，最大局部差可达0.9568。生成对比图、原尺寸深灰/白底 Halo 预览和四项空白评分表；没有伪造人工质量评分。真实图 A/B 采用相同的上游 PIL 推荐预处理，独立于用于归因的生产预处理合成 Probe，不声称完全复现生产 UI 的 resize 数值。
+
+官方 BEN2_Base.onnx 输入 FP32、输出 FP16，按其 ONNX 脚本的 /255、min-max 与特殊宽高传参后处理做诊断；未套用 BiRefNet sigmoid。CPU 首图60.093秒未完成即终止；DML10/10、warm0.555秒，但有部分节点未分配首选EP的两行运行时警告，且四个重复输入的原始输出存在小幅不一致。可靠CPU后备门槛未过；受CPU停止与DML10次上限约束，只产生6张不同图片结果，另10张未运行。不为补齐表格重开Session继续测，不将BEN2宣称为全套质量更优。NumPy后处理遵循官方流程，但PyTorch逐bit一致性未验证。
+
+标准集包含16张公开自由许可图（15张照片、1张插画），覆盖16类；来源、作者、许可、实际SHA256和尺寸见 [testset](../dev-assets/background-removal-testset/README.md)。3张因源站明确要求改用官方1920px版本，已如实标注；固定性能集保留24MP原图，发丝另有36.15MP原图。自动核实38张透明PNG、76张背景合成预览和32张横向对比；这些检查不代替语义质量验收。
+
+所有者于2026-09-03明确提供 qualitative owner acceptance：普通人物、发丝、商品硬边通过；逆光发丝、transparent hard case、thin structure 未见相对 A 的明显新增退化。**B = Production Approved Candidate；KEEP MODEL / CHANGE EXPORT。** 没有逐项 1–5 数值评分；这只是 B 相对 A 的替换验收，不承诺所有透明物体、发丝、细结构完美，不代表 V0.2 生产集成/UI 已实现或验收。BEN2保留研究价值但不替换、不补测缺失案例；未触发备用InSPyReNet。Simple-background Fast Path仍为 Future Candidate。详细方法、固定SHA、资源口径和命令见 [P1 Reference](MODULE_DEVELOPMENT_REFERENCE_V1.md#16-v02-p1-model--onnx-export-comparison)。P1 收口先独立 build/commit/push，再开始 V0.2 Runtime Gate；生产改动须另待人工验收，不能并入 P1 提交。
+
 ### 2026-09-03 — Background Remover V0.2-P0 资源归因
 
-状态：**Research / Uncommitted；V0.2 生产准入未通过**。所有者在前一轮 backend gate 停止后单独批准 P0；从相同 HEAD / origin/main=`88efae8` 和三个预期研究文档修改继续，保留旧记录，不要求或制造干净工作树。只运行被忽略的 artifacts 探针并维护三份既有文档。
+状态：**Research；记录已提交，V0.2 生产准入未通过**。所有者在前一轮 backend gate 停止后单独批准 P0；从相同 HEAD / origin/main=`88efae8` 和三个预期研究文档修改继续，保留旧记录，不要求或制造干净工作树。只运行被忽略的 artifacts 探针并维护三份既有文档。
+
+P1 开始前按所有者独立授权封存 P0：`635bb60361de9be7ca014dea516e8f006b0b275e docs: record background remover backend investigation`，Commit Date **2026-09-03 04:49:35 +08:00**。仅三份研究文档，已推送 GitHub；推送后 HEAD / origin/main / 远端 main 相同，工作树干净。这次提交不授权 P1 提交或生产改动。下述“本轮”仍指原 P0 调查。
 
 CPU FP32 的 4×6-run 矩阵确认资源代价不仅由模型文件大小决定：默认 peak WS=12.49 GB / warm median=5.318秒；关 Memory Pattern 为7.66 GB，关 Arena 为6.50 GB，两者均关仍有6.27 GB瞬时峰值。Dispose后各组约120 MB；与前轮20-run平台期共同支持 Session关联native分配/保留是主要方向，但无heap trace，未证明长期不存在泄漏。产品判断为 **Functionally Stable but Resource Heavy**，不宜作为低占用通用默认。
 
@@ -34,7 +50,7 @@ FP32 DML 在同一 RTX4060 上再次第二次失败，本次HRESULT为0x887A0005
 
 ### 2026-09-03 — Background Remover V0.2 后端准入检查
 
-状态：**Research / Blocked；本记录 Uncommitted，V0.2 产品实现未开始**。开始时只读核实 HEAD、本地 origin/main 和 GitHub main 均为 `88efae8083c4e173b727bbe048854e939f9ddaaa feat: add background remover module v0.1`，工作树干净。
+状态：**Research / Blocked；本记录后随 P0 提交 `635bb60`，V0.2 产品实现未开始**。开始时只读核实 HEAD、本地 origin/main 和 GitHub main 均为 `88efae8083c4e173b727bbe048854e939f9ddaaa feat: add background remover module v0.1`，工作树干净。
 
 先验证现有模型可用性，再接入批量与 UI。当前 NuGet DirectML 最新稳定包为 1.24.4，不能假定与 V0.1 CPU 1.29.0 同版本。独立探针保持 FP32 模型和生产 Pre/Postprocess，在 RTX 4060 Laptop GPU 上创建 Session 并完成第一次 Run，第二次 Run 于 `DmlFusedNode_13_45` 返回 `0x8007000E`，随后 DirectML 命令列表关闭失败。按所有者规定停止 GPU 实现，没有换模型、调整优化配置试错或通过 CPU fallback 伪装 GPU 成功。该证据是当前模型/后端/硬件组合的资源与执行阻断，不是已证实的算子不支持或内存泄漏。
 

@@ -23,3 +23,6 @@ packages/
 *.binlog
 # Background Remover model is prepared separately; keep Models/README.md tracked.
 /modules/AddToolBox.BackgroundRemover/Models/*.onnx
+
+# Downloaded research fixtures; only the manifest and preparation instructions are tracked.
+/dev-assets/background-removal-testset/images/

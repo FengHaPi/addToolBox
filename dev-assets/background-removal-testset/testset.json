@@ -1,0 +1,416 @@
+{
+  "schemaVersion": 1,
+  "images": [
+    {
+      "id": "portrait-normal",
+      "category": "portrait-normal",
+      "filename": "portrait-normal.jpg",
+      "sourcePage": "https://commons.wikimedia.org/wiki/File:Russia._portrait_of_a_woman_with_dark_hair.jpg",
+      "downloadUrl": "https://upload.wikimedia.org/wikipedia/commons/9/92/Russia._portrait_of_a_woman_with_dark_hair.jpg",
+      "license": "CC BY-SA 4.0",
+      "author": "Dmitry Makeev",
+      "sha256": "4b2da733a1ed349ab8b3d7728cd676e7100892e0dd3d3576e18ef83621a69935",
+      "expectedFocus": [
+        "subject-loss",
+        "halo"
+      ],
+      "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0",
+      "width": 2050,
+      "height": 3084,
+      "bytes": 3784554,
+      "originalAlphaRange": [
+        255,
+        255
+      ],
+      "sourceTitle": "Russia. portrait of a woman with dark hair.jpg",
+      "rendition": "original"
+    },
+    {
+      "id": "portrait-short-hair",
+      "category": "portrait-short-hair",
+      "filename": "portrait-short-hair.jpg",
+      "sourcePage": "https://commons.wikimedia.org/wiki/File:President_Barack_Obama.jpg",
+      "downloadUrl": "https://upload.wikimedia.org/wikipedia/commons/8/8d/President_Barack_Obama.jpg",
+      "license": "Public domain",
+      "author": "Official White House Photo by Pete Souza",
+      "sha256": "744dd848fbb0584229169e01c4944664957c62495fb9e8af514a088ebca43e19",
+      "expectedFocus": [
+        "hair-edge",
+        "halo"
+      ],
+      "licenseUrl": null,
+      "width": 2687,
+      "height": 3356,
+      "bytes": 1276121,
+      "originalAlphaRange": [
+        255,
+        255
+      ],
+      "sourceTitle": "President Barack Obama.jpg",
+      "rendition": "original",
+      "licenseBasis": "Official White House photograph; United States federal government work (Commons PD-USGov)."
+    },
+    {
+      "id": "portrait-long-hair",
+      "category": "portrait-long-hair",
+      "filename": "portrait-long-hair.jpg",
+      "sourcePage": "https://commons.wikimedia.org/wiki/File:Woman_with_long_black_hair_from_behind.jpg",
+      "downloadUrl": "https://upload.wikimedia.org/wikipedia/commons/2/23/Woman_with_long_black_hair_from_behind.jpg",
+      "license": "CC BY-SA 4.0",
+      "author": "Alex Neman",
+      "sha256": "2d642e535debe5e648d686774d5235e38ee41149bdc241bfa666dfda0cc37897",
+      "expectedFocus": [
+        "hair-edge",
+        "background-residue"
+      ],
+      "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0",
+      "width": 2257,
+      "height": 3493,
+      "bytes": 1131027,
+      "originalAlphaRange": [
+        255,
+        255
+      ],
+      "sourceTitle": "Woman with long black hair from behind.jpg",
+      "rendition": "original"
+    },
+    {
+      "id": "hair-fine",
+      "category": "hair-fine",
+      "filename": "hair-fine.jpg",
+      "sourcePage": "https://commons.wikimedia.org/wiki/File:Smiling_senior_woman_with_curly_hair_portrait.jpg",
+      "downloadUrl": "https://upload.wikimedia.org/wikipedia/commons/8/81/Smiling_senior_woman_with_curly_hair_portrait.jpg",
+      "license": "CC BY 2.0",
+      "author": "Shixart1985",
+      "sha256": "839be8298fe2102ebba1943bf63f1cf49fb5d65c6c495a080a2ef385584496ee",
+      "expectedFocus": [
+        "hair-edge",
+        "halo"
+      ],
+      "licenseUrl": "https://creativecommons.org/licenses/by/2.0",
+      "width": 4912,
+      "height": 7360,
+      "bytes": 18210030,
+      "originalAlphaRange": [
+        255,
+        255
+      ],
+      "sourceTitle": "Smiling senior woman with curly hair portrait.jpg",
+      "rendition": "original"
+    },
+    {
+      "id": "backlight-hair",
+      "category": "backlight-hair",
+      "filename": "backlight-hair.jpg",
+      "sourcePage": "https://commons.wikimedia.org/wiki/File:Golden_hour_to_sunset_-_2019-08-27_19-19b_-_modelled_by_Marina_Daschner.jpg",
+      "downloadUrl": "https://upload.wikimedia.org/wikipedia/commons/1/18/Golden_hour_to_sunset_-_2019-08-27_19-19b_-_modelled_by_Marina_Daschner.jpg",
+      "license": "CC BY-SA 3.0",
+      "author": "Tobias ToMar Maier",
+      "sha256": "77e98a1d340acd7c969be9b96592d123d822f71d17bac54688ca5a5c9f2ce6ca",
+      "expectedFocus": [
+        "hair-edge",
+        "halo"
+      ],
+      "licenseUrl": "https://creativecommons.org/licenses/by-sa/3.0",
+      "width": 2417,
+      "height": 4296,
+      "bytes": 5010096,
+      "originalAlphaRange": [
+        255,
+        255
+      ],
+      "sourceTitle": "Golden hour to sunset - 2019-08-27 19-19b - modelled by Marina Daschner.jpg",
+      "rendition": "original"
+    },
+    {
+      "id": "animal-fur",
+      "category": "animal-fur",
+      "filename": "animal-fur.jpg",
+      "sourcePage": "https://commons.wikimedia.org/wiki/File:Ginger_long-haired_cat_(Unsplash).jpg",
+      "downloadUrl": "https://upload.wikimedia.org/wikipedia/commons/a/af/Ginger_long-haired_cat_%28Unsplash%29.jpg",
+      "license": "CC0",
+      "author": "dorota dylka dylka",
+      "sha256": "83abba6534a7b4154caae8673057bc7a5c168e52883fae97c58b89ad56f054b0",
+      "expectedFocus": [
+        "fur-detail",
+        "halo"
+      ],
+      "licenseUrl": "http://creativecommons.org/publicdomain/zero/1.0/deed.en",
+      "width": 3872,
+      "height": 2592,
+      "bytes": 2752153,
+      "originalAlphaRange": [
+        255,
+        255
+      ],
+      "sourceTitle": "Ginger long-haired cat (Unsplash).jpg",
+      "rendition": "original"
+    },
+    {
+      "id": "product-hard-edge",
+      "category": "product-hard-edge",
+      "additionalCategories": ["product-white-background"],
+      "filename": "product-hard-edge.jpg",
+      "sourcePage": "https://commons.wikimedia.org/wiki/File:Nikon_Z_5_w_Nikkor_50mm_f1.8S.jpg",
+      "downloadUrl": "https://upload.wikimedia.org/wikipedia/commons/1/13/Nikon_Z_5_w_Nikkor_50mm_f1.8S.jpg",
+      "license": "CC BY-SA 4.0",
+      "author": "Florstein (Telegram:WikiPhoto.Space)",
+      "sha256": "34928b3adc4d2a04ffbb1e5f442d4ee64708b00560f141f1c4d9e56a632f0977",
+      "expectedFocus": [
+        "hard-edge",
+        "halo"
+      ],
+      "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0",
+      "width": 4000,
+      "height": 3200,
+      "bytes": 4156903,
+      "originalAlphaRange": [
+        255,
+        255
+      ],
+      "sourceTitle": "Nikon Z 5 w Nikkor 50mm f1.8S.jpg",
+      "rendition": "original"
+    },
+    {
+      "id": "product-white-background",
+      "category": "product-hard-edge",
+      "categoryNote": "Acquisition ID retained for result traceability. Visual inspection shows a gray gradient, not white; white-background coverage is provided by the Nikon camera case.",
+      "filename": "product-white-background.jpg",
+      "sourcePage": "https://commons.wikimedia.org/wiki/File:Necklace_made_of_rough_diamonds.jpg",
+      "downloadUrl": "https://upload.wikimedia.org/wikipedia/commons/0/01/Necklace_made_of_rough_diamonds.jpg",
+      "license": "CC BY-SA 4.0",
+      "author": "W.carter",
+      "sha256": "31c6d9564fa1ee0ea32de3910a29e6de9c8093ac0d812107c183e16d604185cb",
+      "expectedFocus": [
+        "thin-structure",
+        "halo"
+      ],
+      "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0",
+      "width": 4867,
+      "height": 2738,
+      "bytes": 4759191,
+      "originalAlphaRange": [
+        255,
+        255
+      ],
+      "sourceTitle": "Necklace made of rough diamonds.jpg",
+      "rendition": "original"
+    },
+    {
+      "id": "similar-color-background",
+      "category": "similar-color-background",
+      "filename": "similar-color-background.jpg",
+      "sourcePage": "https://commons.wikimedia.org/wiki/File:2012-02-04_White_cat_in_the_snow_in_Rome.jpg",
+      "downloadUrl": "https://upload.wikimedia.org/wikipedia/commons/9/9f/2012-02-04_White_cat_in_the_snow_in_Rome.jpg",
+      "license": "CC BY-SA 3.0",
+      "author": "Blackcat",
+      "sha256": "5fc0504dcef89f72d4bdbb9065e0b7d844cbef9f844411b79c2119bff48aaa96",
+      "expectedFocus": [
+        "fur-detail",
+        "subject-loss"
+      ],
+      "licenseUrl": "https://creativecommons.org/licenses/by-sa/3.0",
+      "width": 2848,
+      "height": 2134,
+      "bytes": 1329848,
+      "originalAlphaRange": [
+        255,
+        255
+      ],
+      "sourceTitle": "2012-02-04 White cat in the snow in Rome.jpg",
+      "rendition": "original"
+    },
+    {
+      "id": "thin-structure",
+      "category": "thin-structure",
+      "filename": "thin-structure.jpg",
+      "sourcePage": "https://commons.wikimedia.org/wiki/File:Kellner_bicycle_side_view.JPG",
+      "downloadUrl": "https://upload.wikimedia.org/wikipedia/commons/6/6c/Kellner_bicycle_side_view.JPG",
+      "license": "CC BY-SA 4.0",
+      "author": "User:Javier Carro",
+      "sha256": "4ed4ddeb4d27170136881056f96ba744f3e1109cfba79a6cde1dacc3ca6a95a2",
+      "expectedFocus": [
+        "thin-structure",
+        "background-residue"
+      ],
+      "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0",
+      "width": 4032,
+      "height": 3024,
+      "bytes": 4680695,
+      "originalAlphaRange": [
+        255,
+        255
+      ],
+      "sourceTitle": "Kellner bicycle side view.JPG",
+      "rendition": "original"
+    },
+    {
+      "id": "multiple-subjects",
+      "category": "multiple-subjects",
+      "filename": "multiple-subjects.jpg",
+      "sourcePage": "https://commons.wikimedia.org/wiki/File:Official_portrait_of_President_Obama_and_Vice_President_Biden_2012.jpg",
+      "downloadUrl": "https://upload.wikimedia.org/wikipedia/commons/e/e4/Official_portrait_of_President_Obama_and_Vice_President_Biden_2012.jpg",
+      "license": "Public domain",
+      "author": "Official White House Photo by Chuck Kennedy",
+      "sha256": "36f5523f9c2ae301f0f2ce6a528adbd4a8a159d7d17f3e18eb77c7ae349c812b",
+      "expectedFocus": [
+        "subject-loss",
+        "background-residue"
+      ],
+      "licenseUrl": null,
+      "width": 637,
+      "height": 912,
+      "bytes": 434685,
+      "originalAlphaRange": [
+        255,
+        255
+      ],
+      "sourceTitle": "Official portrait of President Obama and Vice President Biden 2012.jpg",
+      "rendition": "original",
+      "licenseBasis": "Official White House photograph; United States federal government work (Commons PD-USGov)."
+    },
+    {
+      "id": "complex-background",
+      "category": "complex-background",
+      "filename": "complex-background.jpg",
+      "sourcePage": "https://commons.wikimedia.org/wiki/File:Portrait_photograph_of_a_walking_woman_wearing_a_red_yukata_with_an_oil-paper_umbrella,_in_Gion,_Kyoto,_Japan.jpg",
+      "downloadUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/0/08/Portrait_photograph_of_a_walking_woman_wearing_a_red_yukata_with_an_oil-paper_umbrella%2C_in_Gion%2C_Kyoto%2C_Japan.jpg/1920px-Portrait_photograph_of_a_walking_woman_wearing_a_red_yukata_with_an_oil-paper_umbrella%2C_in_Gion%2C_Kyoto%2C_Japan.jpg",
+      "license": "CC BY-SA 4.0",
+      "author": "Basile Morin",
+      "sha256": "0db1bb22ca980272cc11e53be3de0305b9d554bf00c9d1156517ab339fc60c7f",
+      "expectedFocus": [
+        "subject-loss",
+        "background-residue"
+      ],
+      "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0",
+      "width": 1920,
+      "height": 1280,
+      "bytes": 890842,
+      "originalAlphaRange": [
+        255,
+        255
+      ],
+      "sourceTitle": "Portrait photograph of a walking woman wearing a red yukata with an oil-paper umbrella, in Gion, Kyoto, Japan.jpg",
+      "rendition": "Wikimedia API 1920px rendition; original endpoint returned HTTP 429 with thumbnail guidance"
+    },
+    {
+      "id": "illustration-anime",
+      "category": "illustration-anime",
+      "filename": "illustration-anime.png",
+      "sourcePage": "https://commons.wikimedia.org/wiki/File:Wikipe-tan_full_length.png",
+      "downloadUrl": "https://upload.wikimedia.org/wikipedia/commons/c/c8/Wikipe-tan_full_length.png",
+      "license": "CC BY-SA 3.0",
+      "author": "Kasuga~commonswiki",
+      "sha256": "5dbe4625375f49fb40a90c71834608c87d6eb75047be4a3a29d55ea29c9ff522",
+      "expectedFocus": [
+        "thin-structure",
+        "halo"
+      ],
+      "licenseUrl": "http://creativecommons.org/licenses/by-sa/3.0/",
+      "width": 1110,
+      "height": 2100,
+      "bytes": 114154,
+      "originalAlphaRange": [
+        0,
+        255
+      ],
+      "sourceTitle": "Wikipe-tan full length.png",
+      "rendition": "original"
+    },
+    {
+      "id": "low-contrast",
+      "category": "low-contrast",
+      "additionalCategories": ["high-resolution"],
+      "filename": "low-contrast.jpg",
+      "sourcePage": "https://commons.wikimedia.org/wiki/File:Cat_in_the_dark.jpg",
+      "downloadUrl": "https://upload.wikimedia.org/wikipedia/commons/4/4e/Cat_in_the_dark.jpg",
+      "license": "CC BY-SA 4.0",
+      "author": "Blümchenkäfer",
+      "sha256": "6840df55ff04c5eab20518b8ab05ed27f714f077ca6c317464e18a4a9b9dbb38",
+      "expectedFocus": [
+        "fur-detail",
+        "subject-loss"
+      ],
+      "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0",
+      "width": 6000,
+      "height": 4000,
+      "bytes": 4980736,
+      "originalAlphaRange": [
+        255,
+        255
+      ],
+      "sourceTitle": "Cat in the dark.jpg",
+      "rendition": "original"
+    },
+    {
+      "id": "transparent-hard-case",
+      "category": "transparent-hard-case",
+      "filename": "transparent-hard-case.jpg",
+      "sourcePage": "https://commons.wikimedia.org/wiki/File:Glaskugel_--_2022_--_9849.jpg",
+      "downloadUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/6/6e/Glaskugel_--_2022_--_9849.jpg/1920px-Glaskugel_--_2022_--_9849.jpg",
+      "license": "CC BY-SA 4.0",
+      "author": "Dietmar Rabich",
+      "sha256": "7410905d7acc2c69657b6a0673edcf815e2f9395aa8d4e3fb7b34ff86f7864b5",
+      "expectedFocus": [
+        "hard-edge",
+        "halo",
+        "background-residue"
+      ],
+      "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0",
+      "width": 1920,
+      "height": 1280,
+      "bytes": 118901,
+      "originalAlphaRange": [
+        255,
+        255
+      ],
+      "sourceTitle": "Glaskugel -- 2022 -- 9849.jpg",
+      "rendition": "Wikimedia API 1920px rendition; original endpoint returned HTTP 429 with thumbnail guidance"
+    },
+    {
+      "id": "high-resolution",
+      "category": "high-resolution",
+      "filename": "high-resolution.jpg",
+      "sourcePage": "https://commons.wikimedia.org/wiki/File:Portrait_of_a_young_woman_wearing_a_gray_balaclava.jpg",
+      "downloadUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/2/21/Portrait_of_a_young_woman_wearing_a_gray_balaclava.jpg/1920px-Portrait_of_a_young_woman_wearing_a_gray_balaclava.jpg",
+      "license": "CC BY-SA 4.0",
+      "author": "Basile Morin",
+      "sha256": "f2ecb1adada8062252a4a893e9cf2a782bb0950d9ba3aedc9a4a22e6a50e1b8e",
+      "expectedFocus": [
+        "hair-edge",
+        "halo"
+      ],
+      "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0",
+      "width": 1920,
+      "height": 1920,
+      "bytes": 1298093,
+      "originalAlphaRange": [
+        255,
+        255
+      ],
+      "sourceTitle": "Portrait of a young woman wearing a gray balaclava.jpg",
+      "rendition": "Wikimedia API 1920px rendition; original endpoint returned HTTP 429 with thumbnail guidance"
+    }
+  ],
+  "performanceSet": [
+    "portrait-normal",
+    "hair-fine",
+    "animal-fur",
+    "product-hard-edge",
+    "complex-background",
+    "low-contrast"
+  ],
+  "performanceRoles": {
+    "portrait-normal": "portrait",
+    "hair-fine": "hair",
+    "animal-fur": "fur",
+    "product-hard-edge": "product",
+    "complex-background": "complex",
+    "low-contrast": "high-resolution (6000x4000 original)"
+  },
+  "notes": [
+    "16 source images: 15 photographs and one anime illustration; human quality scores pending.",
+    "Three explicitly identified official 1920px renditions follow Wikimedia's HTTP 429 guidance. They are not original-resolution downloads.",
+    "The high-resolution stress role uses the 24 MP low-contrast original; hair-fine also retains its 36.15 MP original. The descriptive case id high-resolution is a 1920x1920 rendition."
+  ]
+}

@@ -35,8 +35,9 @@
 
 ### Research / Technical Milestone
 
-- **V0.2-P0 resource investigation — Research / Uncommitted（2026-09-03）。** CPU FP32 四组内存矩阵表明默认约 12.49 GB 工作集受 Arena / Memory Pattern 共同放大，仍属 Functionally Stable but Resource Heavy，不定性为泄漏。FP32 DirectML 第二次再失败，本次为设备移除而非同一 OOM HRESULT；临时 FP16 DML 10/10 成功、warm 约 2.07 秒，但资源仍超预算且真实质量未验收，不进入生产。建议保留 CPU 后备并先评估模型，详见 [P0 Reference](docs/MODULE_DEVELOPMENT_REFERENCE_V1.md#15-v02-p0-resource-investigation)；正式代码、依赖和模型保持 V0.1。
-- **V0.2 backend gate — Blocked / Uncommitted（2026-09-03）。** 从干净 `88efae8` 开始，现有 FP32 模型的 DirectML 1.24.4 隔离探针在第二次 Run 出现命令列表执行内存分配失败；按任务停止条件未接入生产。原 CPU 1.29.0 的约 12.60 GB Working Set 风险另行复测，方法、结果与证据边界见 [Reference](docs/MODULE_DEVELOPMENT_REFERENCE_V1.md#14-v02-backend-gate)。未实现或验收 V0.2 Batch/GPU/性能面板，不将高工作集直接称为泄漏。
+- **V0.2-P1 Model / ONNX Export Comparison — Research / Owner visual acceptance PASSED（2026-09-03）。** 建立 16 张自由许可标准图与固定 6 图性能集；图片和输出不进入 Git。所有者定性验收普通人物、发丝、商品硬边、逆光、透明难例和细结构，未发现 B 相比 A 足以拒绝生产替换的明显新增退化，批准 B Static BiRefNet 为 Production Approved Candidate，方向为 **KEEP MODEL / CHANGE EXPORT**。未填写或虚构 1–5 评分，不承诺所有透明物体或细节完美，也不表示 V0.2 集成已验收。P1 探针 B CPU peak WS 3.47 GB、DML 10/10、warm median 0.323 秒；BEN2 CPU 后备门槛失败，仅有 6 图结果，不继续补测。详见 [P1 Reference](docs/MODULE_DEVELOPMENT_REFERENCE_V1.md#16-v02-p1-model--onnx-export-comparison)。
+- **V0.2-P0 resource investigation — Research（2026-09-03；记录已提交 `635bb60`）。** CPU FP32 四组内存矩阵表明默认约 12.49 GB 工作集受 Arena / Memory Pattern 共同放大，仍属 Functionally Stable but Resource Heavy，不定性为泄漏。FP32 DirectML 第二次再失败，本次为设备移除而非同一 OOM HRESULT；临时 FP16 DML 10/10 成功、warm 约 2.07 秒，但资源仍超预算且真实质量未验收，不进入生产。建议保留 CPU 后备并先评估模型，详见 [P0 Reference](docs/MODULE_DEVELOPMENT_REFERENCE_V1.md#15-v02-p0-resource-investigation)；正式代码、依赖和模型保持 V0.1。
+- **V0.2 backend gate — Blocked（2026-09-03；记录随 P0 提交 `635bb60`）。** 从干净 `88efae8` 开始，现有 FP32 模型的 DirectML 1.24.4 隔离探针在第二次 Run 出现命令列表执行内存分配失败；按任务停止条件未接入生产。原 CPU 1.29.0 的约 12.60 GB Working Set 风险另行复测，方法、结果与证据边界见 [Reference](docs/MODULE_DEVELOPMENT_REFERENCE_V1.md#14-v02-backend-gate)。未实现或验收 V0.2 Batch/GPU/性能面板，不将高工作集直接称为泄漏。
 
 ## Historical Milestones
 
