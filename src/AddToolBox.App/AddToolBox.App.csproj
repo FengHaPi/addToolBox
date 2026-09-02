@@ -10,6 +10,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\AddToolBox.Core\AddToolBox.Core.csproj" />
+    <ProjectReference Include="..\AddToolBox.SDK\AddToolBox.SDK.csproj" />
   </ItemGroup>
 
 </Project>

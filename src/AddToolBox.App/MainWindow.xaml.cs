@@ -80,7 +80,7 @@ public partial class MainWindow : Window
         CreateFrozenBrush(Color.FromRgb(80, 84, 91));
 
     private readonly DispatcherTimer _longPressTimer;
-    private readonly IReadOnlyDictionary<FrameworkElement, ToolDefinition> _toolDefinitionsByVisual;
+    private readonly Dictionary<FrameworkElement, ToolDefinition> _toolDefinitionsByVisual;
     private readonly WorldCanvasState _worldCanvas = new();
     private ToolDefinition? _activeTool;
     private HashSet<Button> _currentCollisionContacts = new();
@@ -172,6 +172,7 @@ public partial class MainWindow : Window
         CaptureInitialToolPositions();
         EnsureWorldCanvasInitialized();
         ApplyCameraProjection();
+        DiscoverInstalledModules();
     }
 
     private void OnWindowSizeChanged(object sender, SizeChangedEventArgs e)
@@ -757,6 +758,16 @@ public partial class MainWindow : Window
 
     private void OpenTool(ToolDefinition toolDefinition)
     {
+        FrameworkElement view;
+        try
+        {
+            view = _loadedModules[toolDefinition.Id].GetOrCreateView();
+        }
+        catch (Exception error)
+        {
+            ShowModuleError("打开模组失败", error);
+            return;
+        }
         CancelActiveToolInteraction();
         ClearBoundaryFeedback();
         ClearCollisionContacts();
@@ -767,6 +778,7 @@ public partial class MainWindow : Window
         }
 
         _activeTool = toolDefinition;
+        ToolHostContent.Content = view;
         ToolHostTitle.Text = _activeTool.DisplayName;
         WorkspaceView.IsHitTestVisible = false;
         WorkspaceView.Visibility = Visibility.Hidden;
@@ -776,6 +788,7 @@ public partial class MainWindow : Window
     private void OnToolHostBackClick(object sender, RoutedEventArgs e)
     {
         _activeTool = null;
+        ToolHostContent.Content = null;
         ToolHostTitle.Text = string.Empty;
         ToolHostView.Visibility = Visibility.Hidden;
         WorkspaceView.Visibility = Visibility.Visible;

@@ -448,6 +448,16 @@
                             Margin="0,0,6,0"
                             VerticalAlignment="Center"
                             Orientation="Horizontal">
+                    <Button x:Name="ImportModuleButton"
+                            Style="{StaticResource TitleButtonStyle}"
+                            AutomationProperties.Name="导入模组"
+                            ToolTip="导入模组"
+                            Click="OnImportModuleClick">
+                        <Path Width="18" Height="18" Stretch="Uniform"
+                              Data="M 2,5 L 7,5 L 9,7 L 17,7 L 17,17 L 2,17 Z M 12,1 L 12,5 M 10,3 L 14,3"
+                              Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
+                              StrokeThickness="1.5" StrokeLineJoin="Round" />
+                    </Button>
                     <Button x:Name="ResetViewButton"
                             Style="{StaticResource TitleButtonStyle}"
                             AutomationProperties.Name="回到初始视图"
@@ -682,7 +692,9 @@
                                    FontWeight="SemiBold"
                                    Foreground="#343941" />
                     </Grid>
-
+                    <ContentControl x:Name="ToolHostContent" Grid.Row="1"
+                                    HorizontalContentAlignment="Stretch"
+                                    VerticalContentAlignment="Stretch" />
                 </Grid>
             </Grid>
 
