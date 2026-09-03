@@ -45,20 +45,71 @@
             <RowDefinition Height="*" />
             <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
+        <Grid>
+            <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
         <WrapPanel>
             <Button x:Name="ChooseButton" Style="{StaticResource ActionButton}" Content="选择图片" Click="OnChooseClick" />
             <Button x:Name="ProcessButton" Style="{StaticResource ActionButton}" Background="#E6EDFB" Content="去除背景" IsEnabled="False" Click="OnProcessClick" />
             <Button x:Name="SaveButton" Style="{StaticResource ActionButton}" Content="保存 PNG" IsEnabled="False" Click="OnSaveClick" />
         </WrapPanel>
+            <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Top">
+                <ComboBox x:Name="BackendSelector" Width="90" Height="35" Margin="8,2,10,0" SelectedIndex="0"
+                          Foreground="#344762" Background="#FDFEFF" BorderBrush="#D9E1EB"
+                          ToolTip="自动优先 GPU，不可用时明确切换 CPU" SelectionChanged="OnBackendChanged">
+                    <ComboBoxItem Content="自动" /><ComboBoxItem Content="GPU" /><ComboBoxItem Content="CPU" />
+                </ComboBox>
+                <Button x:Name="PerformanceButton" Style="{StaticResource ActionButton}" Content="性能" Padding="12,8" Margin="0,2,0,0"
+                        ToolTip="显示进程 CPU、内存与处理速度" Click="OnPerformanceClick" />
+            </StackPanel>
+        </Grid>
         <TextBlock x:Name="ImageDetails" Grid.Row="1" Margin="0,2,0,16" Foreground="#6D7B8C"
-                   Text="选择或拖入一张图片 · PNG / JPEG / BMP · 完全本地处理" TextTrimming="CharacterEllipsis" />
+                   Text="选择或拖入图片 / 文件夹 · PNG / JPEG / BMP · 完全本地处理" TextTrimming="CharacterEllipsis" />
         <Grid Grid.Row="2">
             <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="16" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
             <Border CornerRadius="12" BorderThickness="1" BorderBrush="#DDE3EC" Background="#70FFFFFF" Padding="12">
                 <Grid>
-                    <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="*" /></Grid.RowDefinitions>
+                    <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="*" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
                     <TextBlock Text="原图" Foreground="#55677E" Margin="2,0,0,10" />
                     <Image x:Name="OriginalPreview" Grid.Row="1" Stretch="Uniform" RenderOptions.BitmapScalingMode="HighQuality" />
+                    <TextBlock x:Name="OriginalPreviewMessage" Grid.Row="1" Visibility="Collapsed" Text="正在载入预览…"
+                               Foreground="#6D7B8C" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                    <ListBox x:Name="ThumbnailList" Grid.Row="2" Height="118" Margin="0,10,0,0" Visibility="Collapsed"
+                             Background="Transparent" BorderThickness="0" SelectionMode="Single"
+                             ScrollViewer.HorizontalScrollBarVisibility="Auto" ScrollViewer.VerticalScrollBarVisibility="Disabled"
+                             ScrollViewer.CanContentScroll="True" VirtualizingPanel.IsVirtualizing="True"
+                             VirtualizingPanel.VirtualizationMode="Recycling" VirtualizingPanel.CacheLength="0"
+                             SelectionChanged="OnThumbnailSelected" ScrollViewer.ScrollChanged="OnThumbnailViewportChanged">
+                        <ListBox.ItemsPanel><ItemsPanelTemplate><VirtualizingStackPanel Orientation="Horizontal" /></ItemsPanelTemplate></ListBox.ItemsPanel>
+                        <ListBox.ItemContainerStyle>
+                            <Style TargetType="ListBoxItem">
+                                <Setter Property="Padding" Value="0" /><Setter Property="Margin" Value="0,0,6,0" />
+                                <Setter Property="Template">
+                                    <Setter.Value><ControlTemplate TargetType="ListBoxItem">
+                                        <Border x:Name="Tile" Background="#F5F7FA" BorderBrush="#DDE3EC" BorderThickness="1" CornerRadius="6" Padding="5">
+                                            <ContentPresenter />
+                                        </Border>
+                                        <ControlTemplate.Triggers>
+                                            <Trigger Property="IsSelected" Value="True"><Setter TargetName="Tile" Property="BorderBrush" Value="#5B7FD6" /></Trigger>
+                                            <DataTrigger Binding="{Binding Status}" Value="处理中">
+                                                <Setter TargetName="Tile" Property="Background" Value="#DDE9FC" />
+                                                <Setter TargetName="Tile" Property="BorderBrush" Value="#5B7FD6" />
+                                            </DataTrigger>
+                                        </ControlTemplate.Triggers>
+                                    </ControlTemplate></Setter.Value>
+                                </Setter>
+                            </Style>
+                        </ListBox.ItemContainerStyle>
+                        <ListBox.ItemTemplate><DataTemplate>
+                            <StackPanel Width="96" ToolTip="{Binding Name}">
+                                <Grid Height="48">
+                                    <TextBlock Text="{Binding ThumbnailMessage}" Foreground="#8793A3" FontSize="10" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                    <Image Source="{Binding Thumbnail}" Stretch="Uniform" Loaded="OnThumbnailLoaded" DataContextChanged="OnThumbnailContextChanged" />
+                                </Grid>
+                                <TextBlock Text="{Binding Name}" TextTrimming="CharacterEllipsis" Foreground="#55677E" FontSize="11" Margin="0,3,0,0" />
+                                <TextBlock Text="{Binding Status}" Foreground="#6D7B8C" FontSize="10" />
+                            </StackPanel>
+                        </DataTemplate></ListBox.ItemTemplate>
+                    </ListBox>
                 </Grid>
             </Border>
             <Border Grid.Column="2" CornerRadius="12" BorderThickness="1" BorderBrush="#DDE3EC" Background="#70FFFFFF" Padding="12">
@@ -73,7 +124,26 @@
         </Grid>
         <StackPanel Grid.Row="3" Margin="0,14,0,0">
             <ProgressBar x:Name="BusyIndicator" Height="3" Margin="0,0,0,10" IsIndeterminate="True" Visibility="Collapsed" />
-            <TextBlock x:Name="StatusText" Foreground="#64748B" Text="BiRefNet Lite · CPU · 图片不会上传" TextWrapping="Wrap" />
+            <TextBlock x:Name="StatusText" Foreground="#64748B" Text="BiRefNet Lite · 图片不会上传" TextWrapping="Wrap" />
         </StackPanel>
+        <Border x:Name="PerformanceCard" Grid.RowSpan="4" Panel.ZIndex="10" Visibility="Collapsed"
+                HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,46,0,0" Width="220"
+                Background="#FAFCFF" BorderBrush="#D9E1EB" BorderThickness="1" CornerRadius="10" Padding="14">
+            <Grid>
+                <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="Auto" />
+                </Grid.RowDefinitions>
+                <Grid.Resources><Style TargetType="TextBlock"><Setter Property="Foreground" Value="#55677E" /><Setter Property="Margin" Value="0,3" /></Style></Grid.Resources>
+                <TextBlock Text="实际设备" /><TextBlock x:Name="DeviceValue" Grid.Column="1" Text="—" />
+                <TextBlock Grid.Row="1" Text="CPU" /><TextBlock x:Name="CpuValue" Grid.Row="1" Grid.Column="1" Text="—" />
+                <TextBlock Grid.Row="2" Text="内存" /><TextBlock x:Name="MemoryValue" Grid.Row="2" Grid.Column="1" Text="—" />
+                <TextBlock Grid.Row="3" Text="当前" /><TextBlock x:Name="CurrentValue" Grid.Row="3" Grid.Column="1" Text="—" />
+                <TextBlock Grid.Row="4" Text="平均" /><TextBlock x:Name="AverageValue" Grid.Row="4" Grid.Column="1" Text="—" />
+                <TextBlock x:Name="ProgressLabel" Grid.Row="5" Text="进度" Visibility="Collapsed" />
+                <TextBlock x:Name="ProgressValue" Grid.Row="5" Grid.Column="1" Text="—" Visibility="Collapsed" />
+            </Grid>
+        </Border>
     </Grid>
 </UserControl>

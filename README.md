@@ -23,7 +23,9 @@ addToolBox 是一个面向 Windows 的轻量、本地、模块化工具箱，目
 - Tool Host / Back 基础，保留后续工具打开与返回的宿主链路
 - 保留 260ms 长按、世界坐标拖拽、Pointer Highlight、实体碰撞 / rua、粒子及 18 DIP 屏幕软边界的交互基础
 - Module System V0.1：人工导入文件夹 Package、启动发现已安装模组、独立 managed/native 依赖加载、动态 64×64 Tile 与缓存 View
-- 第一个正式模组“去背景”：本地 BiRefNet Lite CPU 推理，PNG/JPEG/BMP 输入、双预览和透明 PNG 保存
+- 第一个正式模组“去背景”V0.2.1：本地Static BiRefNet Lite，Auto / GPU / CPU、PNG/JPEG/BMP、原图/结果双预览、轻量EdgeRefinement和桌面PNG输出
+- 去背景批量处理：多选、文件/文件夹拖放、缩略图导航、当前项与状态、顺序执行、单项失败隔离、停止和桌面批次文件夹
+- 去背景可选性能面板：默认关闭，开启后每秒显示进程CPU、Working Set、当前耗时和平均吞吐
 
 未安装模组时 Workspace 为空。五个 calculator / image / file / text / color 原型测试 Tile 已移除；真实工具通过独立 Module Package 安装，不编译进 Host。
 
@@ -50,7 +52,7 @@ Automatic Compaction 已从核心 Resize 行为退役；不再自动收拢、蜂
 
 > The current shell is built using .NET/WPF without third-party runtime packages.
 
-去背景模组独立依赖 Microsoft.ML.OnnxRuntime 1.29.0；大模型与 native 库不进入 Host 依赖。ALC 不是安全沙箱，只导入可信模组。
+去背景模组独立依赖Microsoft.ML.OnnxRuntime.DirectML 1.24.4（Managed 1.24.4、Microsoft.AI.DirectML 1.15.4），同一运行时提供CPU和DirectML后端；模型与native库不进入Host依赖。ALC不是安全沙箱，只导入可信模组。
 
 ## Design Principles
 
@@ -85,7 +87,13 @@ src/
 
 ### 当前里程碑
 
-**Module System V0.1 + Background Remover V0.1** — 首个独立实际工具的工程与手工验收基线，不是正式用户 Release。
+**Module System V0.1 + Background Remover V0.2.1 Frozen Baseline** — Owner已接受的首个独立实际工具生产基线；本次不创建Tag或GitHub Release。
+
+当前状态：**FROZEN / ACCEPTED WITH KNOWN LIMITATIONS**（2026-09-03 Owner确认）。保持B Static BiRefNet Lite与默认EdgeRefinement，参数冻结；Auto / GPU / CPU、Batch、缩略图和默认关闭的性能面板保留，Host / SDK契约保持V1。单张点击“保存PNG”写桌面，Batch逐项自动保存，均重名编号且不覆盖。验收与测量边界见[冻结基线](docs/MODULE_DEVELOPMENT_REFERENCE_V1.md#21-v021-frozen-production-baseline)。
+
+当前不是Adobe / remove.bg级专业抠图方案。发丝/绒毛灰雾、色边、背景残留，逆光halo/飞发，透明Alpha和极细结构仍有限制；复杂商品图还可能误删真实主体。三个木箱样例已证实模型原始Alpha存在主体缺失，这是模型能力限制，EdgeRefinement无法恢复被判为背景的区域。
+
+**V0.3研究：DEFERRED / FUTURE QUALITY RESEARCH**。既有Matting/HR-Matting证据保留，未进入生产；不继续ONNX导出、实验或V0.3-P1。addToolBox是通用模块化工具箱，首个模组已完成工程链路与人工验收验证，当前阶段关闭，项目重点回到Module生态。未来质量任务需另行授权；本轮不开始第二模组。
 
 前序 Git 里程碑包括：
 
@@ -99,11 +107,11 @@ src/
 
 ### 验证状态
 
-Host 和独立 Module build 均为 0 warnings / 0 errors；已验证模型 Smoke Test、SDK/ALC 边界和 Host 集成，并由项目所有者确认 V0.1 人工验收通过。逐图质量评分按所有者要求跳过。性能、资源消耗与限制见 [Module Development Reference V1](docs/MODULE_DEVELOPMENT_REFERENCE_V1.md)；历史见 [CHANGELOG](CHANGELOG.md) 与 [PROJECT_HISTORY](docs/PROJECT_HISTORY.md)。
+Host和独立Module分别构建验证；既有GPU100、CPU smoke、1000项调度、错误隔离、缩略图与性能面板证据见Reference，不作为本轮重复测试。Owner确认V0.2.1速度可接受、缩略图符合预期、边缘修正有改善，并接受已知限制；未虚构逐图评分。最终Build、Package及最小smoke记录见[Module Development Reference V1](docs/MODULE_DEVELOPMENT_REFERENCE_V1.md#21-v021-frozen-production-baseline)；历史见[CHANGELOG](CHANGELOG.md)与[PROJECT_HISTORY](docs/PROJECT_HISTORY.md)。
 
 ### Module 开发与限制
 
-新模组先阅读 [Module Format V1](docs/MODULE_FORMAT_V1.md) 和 [Development Reference](docs/MODULE_DEVELOPMENT_REFERENCE_V1.md)。V0.1 不含批量、GPU、Module Store、Widget Contract 或 Settings；重型模组的 View/Session 在宿主退出前保留。CPU FP32 推理内存成本较高，不能将模型文件大小当作运行内存需求。
+新模组先阅读 [Module Format V1](docs/MODULE_FORMAT_V1.md) 和 [Development Reference](docs/MODULE_DEVELOPMENT_REFERENCE_V1.md)。V0.2 的批量/GPU 位于去背景模组内部；Host 仍无正式 Module Update UI、Module Store、Widget Contract 或 Settings。View 缓存由 Host 保持，去背景模组空闲切换设备时释放旧 Session。不能将模型文件大小当作运行内存需求。
 
 ## Build
 
@@ -127,7 +135,7 @@ dotnet run --project src/AddToolBox.App
 dotnet build -c Release modules/AddToolBox.BackgroundRemover/AddToolBox.BackgroundRemover.csproj
 ```
 
-导入完整 `modules/AddToolBox.BackgroundRemover/bin/Release/net10.0-windows/win-x64` 文件夹，不是其中的 `Models` 子目录。已安装包位于 `%LOCALAPPDATA%\addToolBox\Modules\<id>`。模型不会被 Git 跟踪，build 不自动下载模型。
+正式导入包按模组 README 的 `tools/package.ps1` 生成，导入完整 Package 文件夹，不是其中的 `Models` 子目录。已安装包位于 `%LOCALAPPDATA%\addToolBox\Modules\<id>`；V1 导入拒绝重复 ID，不提供升级替换 UI。模型不会被 Git 跟踪，build 不自动下载模型。
 
 ## License
 

@@ -3,11 +3,12 @@
 Run `powershell -ExecutionPolicy Bypass -File tools/prepare-model.ps1` from this module directory, then build again.
 Build never downloads the model. A missing or corrupt model is reported on the first processing request.
 
-- Model: [onnx-community/BiRefNet_lite-ONNX](https://huggingface.co/onnx-community/BiRefNet_lite-ONNX)
+- Model export: [CoderViking/birefnet-lite-onnx](https://huggingface.co/CoderViking/birefnet-lite-onnx/tree/dc06453148f01ef4131f17e9b791345e32e8ee78)
 - Base: [ZhengPeng7/BiRefNet_lite](https://huggingface.co/ZhengPeng7/BiRefNet_lite)
-- Source file: `onnx/model.onnx`, FP32, approximately 224 MB, MIT license.
+- Source file: `birefnet-lite-1024.onnx`, FP32, 199681624 bytes, MIT/upstream BiRefNet.
+- Revision: `dc06453148f01ef4131f17e9b791345e32e8ee78`.
 - Local/package file: `Models/model.onnx`.
-- SHA256: `5600024376f572a557870a5eb0afb1e5961636bef4e1e22132025467d0f03333`.
+- SHA256: `50a57872cc739192446da2a934159f957c81af8b5a161dfda8e3daa51660ca67`.
 
-The SHA256 pins the accepted artifact even if the upstream `main` download changes.
+Both revision and SHA256 pin the accepted B artifact. Package verification rejects a missing or mismatched model.
 The external model was not trained by addToolBox. Do not commit ONNX binaries.

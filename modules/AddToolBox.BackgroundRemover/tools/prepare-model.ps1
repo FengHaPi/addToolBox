@@ -1,14 +1,16 @@
 $ErrorActionPreference = 'Stop'
 $modelDirectory = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..\Models'))
 $modelPath = Join-Path $modelDirectory 'model.onnx'
-$expectedHash = '5600024376f572a557870a5eb0afb1e5961636bef4e1e22132025467d0f03333'
-$modelUrl = 'https://huggingface.co/onnx-community/BiRefNet_lite-ONNX/resolve/main/onnx/model.onnx'
+$expectedHash = '50a57872cc739192446da2a934159f957c81af8b5a161dfda8e3daa51660ca67'
+$modelRevision = 'dc06453148f01ef4131f17e9b791345e32e8ee78'
+$modelUrl = "https://huggingface.co/CoderViking/birefnet-lite-onnx/resolve/$modelRevision/birefnet-lite-1024.onnx"
 
 if (Test-Path -LiteralPath $modelPath) {
     if ((Get-FileHash -LiteralPath $modelPath -Algorithm SHA256).Hash -ine $expectedHash) {
         throw "Existing model has an unexpected SHA256; left untouched: $modelPath"
     }
-    Write-Output "Verified existing model: $modelPath"
+    if ((Get-Item -LiteralPath $modelPath).Length -ne 199681624) { throw 'Unexpected model size.' }
+    Write-Output "Verified B Static BiRefNet: $modelPath"
     exit 0
 }
 
@@ -20,6 +22,7 @@ try {
     if ($actualHash -ine $expectedHash) {
         throw "Downloaded model SHA256 mismatch. Expected $expectedHash; got $actualHash"
     }
+    if ((Get-Item -LiteralPath $downloadPath).Length -ne 199681624) { throw 'Unexpected model size.' }
     Move-Item -LiteralPath $downloadPath -Destination $modelPath
     Write-Output "Downloaded and SHA256 verified: $modelPath"
 }

@@ -2,7 +2,7 @@
   "schemaVersion": "addtoolbox-module-v1",
   "id": "addtoolbox.background-remover",
   "displayName": "去背景",
-  "version": "0.1.0",
+  "version": "0.2.1",
   "kind": "tool",
   "entryAssembly": "AddToolBox.BackgroundRemover.dll",
   "entryType": "AddToolBox.BackgroundRemover.BackgroundRemoverModule"

@@ -2,6 +2,8 @@
 
 第一个正式模组的工程样板与测量记录：**Module System V0.1 + 去背景 / Background Remover 0.1.0**。
 
+第1–13节保留V0.1验收快照，第14–16节保留后端与模型研究，第17–19节保留V0.2/V0.2.1实施与验证快照，第20节为 **DEFERRED / FUTURE QUALITY RESEARCH**。当前生产状态为 **V0.2.1 FROZEN / ACCEPTED WITH KNOWN LIMITATIONS**，见第21节。旧阶段的“未提交/等待验收/尚未实现”仅描述当时状态，不覆盖Owner最终产品决定。
+
 本文件是经验与证据，不是新的 SDK 规范。正式契约见 [MODULE_FORMAT_V1](MODULE_FORMAT_V1.md) 与 `IAddToolBoxModuleV1`；项目架构权威仍为 [ARCHITECTURE](../ARCHITECTURE.md)。开发下一个 Module 前先阅读本文件，并复制末尾 Checklist。
 
 ## 1. 状态与证据边界
@@ -573,7 +575,7 @@ CPU/GPU 探针首次 build 各有一个 CS9191 警告（QueryInterface 的 ref/i
 
 ## 16. V0.2-P1 Model / ONNX Export Comparison
 
-**2026-09-03 / Research / Owner visual acceptance PASSED；收口记录 Uncommitted，待独立提交。** 本轮先逐文件审核、暂存并提交P0三份文档：`635bb60361de9be7ca014dea516e8f006b0b275e docs: record background remover backend investigation`，2026-09-03 04:49:35 +08:00，已推送GitHub。使用命令级临时Git身份，未写local/global配置；P1开始时HEAD、origin/main、远端main一致且树干净。原P1研究未提交、未修改生产代码；所有者现明确批准先收口P1文档和测试集定义，独立build/commit/push，干净断点后才进入V0.2生产开发。以下P1数据仍是研究探针结果，不是生产Integration测量。
+**2026-09-03 / Research / Owner visual acceptance PASSED；收口已独立提交并推送。** P1 提交为 `ba199c72dd18e7d5e5e2f6e7c01a7c1253fb5bed docs: establish background removal model benchmark`，Commit Date **2026-09-03 05:42:58 +08:00**。8 个获批文件逐一暂存，提交后 HEAD、origin/main 和远端 main 一致、工作树干净，再进入第 17 节生产开发。P0 此前提交为 `635bb60361de9be7ca014dea516e8f006b0b275e docs: record background remover backend investigation`，2026-09-03 04:49:35 +08:00。仅使用命令级临时 Git 身份，未写 local/global 配置；P1 未修改生产代码。以下 P1 数据仍是研究探针结果，不是生产 Integration 测量。
 
 ### 16.1 模型身份、来源与图
 
@@ -685,3 +687,492 @@ git status --short --untracked-files=all
 两临时项目的默认正常build及最终五项目Host solution独立build均**0 warnings / 0 errors**。最初临时项目`--no-restore`因无assets.json出现NETSDK1004，正常已有缓存restore后通过；没有生产代码修复。BEN2的两行native EP warning与build分开记录。输出自动检查为38透明PNG/76合成PNG、16类覆盖；没有新增测试框架或冒称UI测试。原P1研究结束时所有推理/生成/检查进程已退出，生产目录和正式模型未改，仅留下三份文档、.gitignore及四个测试集文件的未提交修改，暂存区为空。
 
 2026-09-03 P1收口复核：`dotnet build .\AddToolBox.sln --artifacts-path .\artifacts\background-v02-production\p1-closeout-host-build`通过，**0 warnings / 0 errors**；`prepare-testset.ps1 -VerifyOnly`重新核实16/16 SHA，`git diff --check`通过。此次仅更新所有者定性验收记录，没有重跑P1模型或补BEN2缺失图。Git提示的LF→CRLF工作树转换告知不属于编译warning。按授权仅逐文件暂存8个Git-eligible文件后独立提交，模型、图片、输出和artifacts不纳入。
+
+## 17. V0.2 Production Integration
+
+**2026-09-03 / Implemented / Uncommitted / 自动验证通过，等待所有者人工 UI 验收。** 这不是正式 Release，不创建 Tag，不提交或推送 V0.2。P1 已独立提交推送为 `ba199c7`，与本节生产修改分开。下述原始证据在被忽略的 `artifacts/background-v02-production/`，不宣称可随 Git clone 获得。第 14–16 节的历史测试、失败和未实现状态继续保留。
+
+### 17.1 实现范围与依赖
+
+模组 version **0.2.0**，id `addtoolbox.background-remover`、显示名称、kind 和 entry contract 不变。生产修改/新增共 **11 个文件**，均在 `modules/AddToolBox.BackgroundRemover/`：
+
+| 文件 | 最终职责 |
+| --- | --- |
+| `AddToolBox.BackgroundRemover.csproj` | 单一 DirectML 发行包、Release 输出与许可证复制 |
+| `BackgroundRemovalEngine.cs` | B SHA、lazy/reused Session、显式后端恢复、原图解码/后处理与安全 PNG 保存 |
+| `ImagePreprocessing.cs`（新增） | 与 P1 一致的抗锯齿 bilinear RGB 重采样与 normalization |
+| `ImageFiles.cs`（新增） | 文件夹递归、路径去重排序、桌面目录与不覆盖命名 |
+| `BatchRemoval.cs`（新增） | 单 worker 顺序执行、逐项错误记录、停止与有界 UI 更新 |
+| `BackgroundRemoverView.xaml` | 保留原预览与三按钮；右上设备下拉/性能按钮和浮层 |
+| `BackgroundRemoverView.xaml.cs` | Single/Batch 状态、后台工作与进度/预览、桌面保存 |
+| `BackgroundRemoverView.Performance.cs`（新增） | 可选的 1 秒进程采样与生命周期 |
+| `module.json` | 仅升级 version |
+| `tools/prepare-model.ps1` | 显式准备固定 revision / SHA / bytes 的 B |
+| `tools/package.ps1`（新增） | 无模型下载的 Release 打包、模型/依赖/文件复制校验 |
+
+另维护 7 份必要文档：根 `README.md`、`CHANGELOG.md`、`docs/PROJECT_HISTORY.md`、本 Reference、模组 `README.md`、`Models/README.md`、`THIRD_PARTY_NOTICES.md`。**SDK / Host / Core / UI / Infrastructure / World Canvas / MainWindow / AGENTS / ARCHITECTURE 修改均为 NO**；没有新公共契约、生产 Python/图像库、第二个模组或 Fast Path。
+
+正式模型为 BiRefNet Lite FP32，来源 [CoderViking 固定 revision](https://huggingface.co/CoderViking/birefnet-lite-onnx/tree/dc06453148f01ef4131f17e9b791345e32e8ee78)，源文件 `birefnet-lite-1024.onnx`，包内 `Models/model.onnx`。revision **`dc06453148f01ef4131f17e9b791345e32e8ee78`**；SHA256 **`50a57872cc739192446da2a934159f957c81af8b5a161dfda8e3daa51660ca67`**；**199681624 bytes**。仅使用已有已验证 B，不研究新模型；旧 A 在 ignored artifacts 保留备份，A/B 均不进入 Git。
+
+采用 **Microsoft.ML.OnnxRuntime.DirectML 1.24.4 + Managed 1.24.4 + Microsoft.AI.DirectML 1.15.4**，传递依赖 System.Numerics.Tensors 9.0.0。DirectML 发行包的同一 native ORT 同时提供 CPU EP 与 DML EP，不携带 CPU 1.29.0，不改 PATH/ALC、不动态偷换 DLL。[ORT DirectML 文档](https://onnxruntime.ai/docs/execution-providers/DirectML-ExecutionProvider.html) 要求的 MemoryPattern=false 和 ORT_SEQUENTIAL 已应用；GPU 使用设备0，表示选择DML，不承诺所有节点都在GPU上执行。真实隔离进程模块清单各只有一个 `onnxruntime.dll`，native文件版本 `1.24.20260316.9.2d92497`；DirectML为 `1.15.4+241025-1615.1.dml-1.15.fac7597`。许可证随包复制，DirectML使用独立Microsoft许可，不将其误称MIT。
+
+### 17.2 Session、恢复和处理边界
+
+打开 View 不创建 Session 或约12MB输入数组；首次处理才 lazy init。同后端整个 View 生命周期复用 Session，CPU/DML inference concurrency **1**；锁保护 Engine，设备切换仅在空闲可用，释放旧 Session，新 Session 下次处理才创建。输入 `float[3*1024*1024]` 由单 worker 复用，没有池/调度框架或并行推理。
+
+Auto 首先尝试 DML。初始化或已识别的 DML 后端 Run 失败时释放旧 Session，记录 GPU unavailable，显示“GPU 不可用，已自动切换 CPU”，创建 CPU Session，当前项至多 CPU 重试一次，后续 Auto 直接 CPU，不每张重试GPU。强制GPU的初始化/后端Run失败抛明确后端异常并终止批次；不自动切CPU。ORT 1.24.4托管异常没有ErrorCode属性，Run分类依据该固定运行时的DML/HRESULT诊断；其他单项异常不会引发后端切换。**未安全模拟设备故障，因此恢复分支仅静态检查**；没有增加可触发的隐藏故障开关。显式CPU成功不冒充Auto故障切换实测。
+
+PNG/JPEG/BMP能力保留；原V0.1不支持TIFF，未新增WebP等依赖。多选/拖入文件或文件夹，递归跳过reparse目录，路径OrdinalIgnoreCase去重并稳定排序。批次只提前保存路径，执行 **Load → Preprocess → Run → Postprocess → Save → awaited UI update → Next**；每个原图/结果更新都等待Dispatcher处理，无解码队列、全量Bitmap/结果集合或1000行UI。原图显示当前项，结果显示最近成功项。
+
+单张Save直接使用DesktopDirectory，输出 `<stem>-no-bg.png`、`<stem>-no-bg (1).png` 等；桌面不可用明确报错。PNG先编码到当前项缓冲，再写本次独占临时文件并以不覆盖方式移动到最终名称；失败清理仅属于该次保存的临时文件。批次新建桌面 `去背景_yyyy-MM-dd_HHmmss` 文件夹，每成功一张自动保存，编号避免同名覆盖。解码/预处理/推理/后处理/保存异常按项隔离；UTF-8 `失败记录.txt`仅含索引、basename、阶段和短错误，详细异常仅Trace。停止禁止后续项启动，已经进入native Run的当前项允许完成。
+
+UI状态明确为Idle、Loading、ReadySingle/Batch、ProcessingSingle/Batch、Stopping、Saving、ChangingBackend、Completed、Error。所有模型/解码/重采样/保存工作在后台，UI更新通过Dispatcher；Batch时选择/设备/保存禁用，“去除背景”变“停止”。只新增右上两个控件与小型性能浮层，没有改变两个预览的布局尺寸。
+
+### 17.3 前置 Runtime Gate 与生产 Engine 测量
+
+单位：时间ms，资源bytes；表中GB为十进制。均在本机RTX4060 Laptop环境运行，未改驱动、清缓存或调CPU线程。Gate直接使用既有P1输入张量与最终依赖，随后Engine探针反射调用真实构建DLL，使用固定6图轮转；这不是另一套生产实现。资源采样约100ms，峰值包含该进程的解码/图片/运行时占用。Cold/Warm只计Run，Engine init含SHA与Session创建；不把Run时间当作含解码、保存、UI的端到端时间。
+
+| 测量 | Init | Cold Run | Warm median | warm成功 | Peak WS | Peak Private |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| 前置Gate CPU | 2044.701 | 3997.821 | 3895.528 | 5/5 | 3506229248 | 4848230400 |
+| 前置Gate GPU | 3875.709 | 420.790 | 288.366 | 10/10 | 1340764160 | 7254327296 |
+| 生产Engine CPU | 2268.472 | 3965.853 | 3892.419 | 5/5 | 3916804096 | 5291122688 |
+| 生产Engine GPU | 4572.377 | 422.348 | 289.281 | 10/10 | 1714524160 | 7638319104 |
+
+CPU **未达3.5秒理想目标，但低于4秒停止线**，Gate WS低于6GB停止线。GPU明显低于1秒，无OOM/Device Removed；10-run有分配后的平台和瞬时图片缓冲波动，未观察持续native增长。生产GPU DXGI local峰值 **5961756672**、nonlocal **649818112** bytes，样本预算约7.25–7.27GB。WorkingSet不是总GPU内存，DXGI是WDDM记账，不与Private/WS相加；本进程物理显存未独立测得。
+
+生产Engine Dispose后CPU WS373121024 / Private325365760；GPU WS827158528 / Private858374144、DXGI local/nonlocal0。Dispose不保证进程所有资源立即归零，也未通过heap trace证明长期无泄漏。证据：`runtime-gate-cpu.jsonl`、`runtime-gate-gpu.jsonl`、`cpu-production/results.jsonl`、`gpu-production/results.jsonl`。
+
+### 17.4 标准集与生产输出回归
+
+最终 `prepare-testset.ps1 -VerifyOnly` **16/16 SHA通过**，没有下载/重跑P1/BEN2。生产CPU选普通人像、发丝、商品、逆光、透明和细结构6类对照P1 B。
+
+初次对照有两个输入不一致。模型无关诊断确认：重新按Pillow处理仍与原P1张量逐位一致，WPF仅在普通人物/商品默认应用ICC时改变RGB。使用 [IgnoreColorProfile](https://learn.microsoft.com/en-us/dotnet/api/system.windows.media.imaging.bitmapcreateoptions?view=windowsdesktop-10.0) 和与P1一致的抗锯齿bilinear后，六图输入张量全部0差异。只重跑受影响的2图，保留初始失败证据，不为其余4图制造重复结果。PNG均保持完整原尺寸、原RGB，Alpha最大差 **1/255**。
+
+| Case | Alpha变化像素 | 最大差（8bit） | 全图Alpha MAE（8bit） | 最终证据目录 |
+| --- | ---: | ---: | ---: | --- |
+| portrait-normal | 8 | 1 | 0.0000012654 | quality-color-fixed |
+| hair-fine | 86 | 1 | 0.0000023788 | quality-six |
+| product-hard-edge | 10 | 1 | 0.0000007813 | quality-color-fixed |
+| backlight-hair | 5 | 1 | 0.0000004815 | quality-six |
+| transparent-hard-case | 6 | 1 | 0.0000024414 | quality-six |
+| thin-structure | 222 | 1 | 0.0000182075 | quality-six |
+
+全部RGB MAE=0。图像预处理仅RGB→1024×1024→/255→ImageNet mean/std→NCHW FP32；后处理stable sigmoid、mask bilinear回原尺寸、乘原Alpha，未加入threshold/erosion/dilation/feather/edge cleanup/color decontamination。这是生产数值回归，不伪造逐图1–5评分或V0.2人工验收。PNG数值比较不受PNG压缩文件SHA不同影响。
+
+### 17.5 实际 Host Batch、错误和压力验证
+
+临时 `HostIntegration` 引用未修改Host工程，启动真实WPF App，从真实安装目录由现有ALC发现0.2.0，调用其实际View/Engine。100-task夹具只轮转标准集路径，不复制100份已解码Bitmap；输出编号均由生产实现生成。测试程序的100ms资源/Dispatcher观测在两组面板对照中一致，不属于产品OFF时的采样器。
+
+| 验证 | 真实Inference | 成功 / 失败 / 未处理 | 批次总秒数 | 成功张/s | Peak WS bytes |
+| --- | ---: | --- | ---: | ---: | ---: |
+| GPU100 | 100 | 100 / 0 / 0 | 119.671696 | 0.835619 | 2395836416 |
+| CPU16 | 16 | 16 / 0 / 0 | 81.857857 | 0.195461 | 4555145216 |
+| 混合坏图6项 | 3 | 3 / 3 / 0 | 6.803440 | 0.440953 | 1545408512 |
+| 停止20项 | 3 | 3 / 0 / 17 | 6.706751 | 0.447310 | 1528856576 |
+| 停止后重启2项 | 2 | 2 / 0 / 0 | 未另计时 | — | 未另采样 |
+
+GPU100结果PNG数100；原图/结果各更新100次；Dispatcher100ms探针1091次回调，最大间隔171.625ms；进度单调、Session对象未逐图创建、完成后控件恢复。WS每10项约1.60、2.07、1.78、1.91、1.78、1.68、2.02、1.66、1.61、2.03GB，有回落，未观察到随张数线性增长。Peak Private8375476224、DXGI local6020038656 / nonlocal654348288；不据这一约2分钟批次宣称长期无泄漏。CPU16原图/结果各更新16次，最大Dispatcher间隔172.632ms，Peak Private5958963200；其4.555GB WS包含Host与大尺寸图像，不是前置Gate的纯运行时峰值。
+
+坏图：empty.png、corrupt.jpg、not-image.bmp各Failed，夹在其中的3张正常图全部继续成功；失败记录3行均为解码阶段，未出现私人绝对路径/StackTrace。损坏JPEG测试出现WIC原生诊断“extraneous bytes / contains no image”，这是预期坏输入诊断，未屏蔽，和build warning分开。停止于已开始的第3张完成后，后17张没有启动；重新加载2张并处理通过。
+
+1000项检查：2000条大小写重复路径→1000条，加载时 **0 decode / 0 inference**、原图为null、Session尚未创建；路径/命名阶段managed增长约7836264 bytes。用单一2×2位图做1000个重名输出，1000个文件全数保留，无覆盖。没有1000个结果集合/Row，**绝不称1000张真实推理成功**。这是实际100张推理加1000任务调度/路径/命名检查。
+
+单张另有1次真实Auto处理，尺寸文本、结果、桌面连续保存2份与已有文件hash不变通过；空闲切CPU释放旧Session、Back/重进使用缓存View通过。性能浮层ON/OFF前后原图布局Rect相等。探针开发曾因语法、WPF StartupUri/ResourceAssembly和Host私有字段名各在推理前失败；依次据实际API/源码修正临时探针，未改Host/测试断言或生产逻辑迎合错误。最终7个Host job均exit0，失败日志保留。
+
+### 17.6 Performance Panel 开销
+
+产品默认OFF：无DispatcherTimer、无Process采样对象、无CPU/内存后台采样；Stage Stopwatch与批次进度不受OFF限制。ON创建一个1秒timer，CPU公式为进程CPU时间增量 / 墙钟增量 / 逻辑处理器数，内存为WorkingSet64；OFF解绑timer、释放采样Process。Back触发Unloaded停止采样，缓存View重开且此前ON才恢复。截图观察到实际GPU、CPU%、WS、当前耗时、吞吐和进度更新，浮层不推动预览。
+
+相同30条GPU任务顺序，各新进程/Session，均包含初始化、解码、保存和UI，30/30成功：
+
+| 面板 | 总耗时s | 吞吐张/s | Peak WS bytes |
+| --- | ---: | ---: | ---: |
+| OFF | 39.5349552 | 0.7588221575 | 2338357248 |
+| ON（1秒） | 39.5552932 | 0.7584319967 | 2423685120 |
+
+ON吞吐较OFF下降 **0.0514166%**，远低于10%停止阈值：**no material overhead observed**。这只有一组配对测量，不称zero overhead；WS差异可能受当前图像/GC峰值采样影响，未归因为timer泄漏。
+
+### 17.7 Package 与开发安装升级
+
+最终验收Package：`artifacts/background-v02-production/package-0.2.0-rc1/`，**19文件 / 236705882 bytes（236.706MB）**，打包后和真实安装目录逐文件size/SHA一致。`deployment-rc1.json`是19项清单，`validation-summary.json`为最终只读审计汇总。
+
+| 文件/类别 | bytes |
+| --- | ---: |
+| Models/model.onnx（唯一模型B） | 199681624 |
+| AddToolBox.BackgroundRemover.dll | 62976 |
+| Microsoft.ML.OnnxRuntime.dll（managed） | 235592 |
+| System.Numerics.Tensors.dll（managed） | 410936 |
+| onnxruntime.dll（native） | 17328152 |
+| onnxruntime_providers_shared.dll（native） | 22040 |
+| DirectML.dll | 18527776 |
+| manifest/deps/runtimeconfig/README/notices/licenses | 436786 |
+
+无PDB、测试图片、benchmark日志、artifacts、SDK私有副本、旧A、BEN2、FP16临时模型、Debug DirectML或第二份native ORT。打包脚本只接受已有正确B SHA、拒绝已有输出目录、逐文件验证复制；普通build/package不下载模型。模型准备脚本下载分支未在本轮联网重跑，已有文件校验和固定参数已核实。
+
+现有Host导入按duplicate ID拒绝更新，不修改Host。按所有者本轮明确授权关闭Host，先建立item-level SHA清单并保留V0.1于 `installed-v0.1-backup/` 与 `installed-v0.1-move-verification/`，再用完整Package做development-only本地替换。第一次Move后目标出现原V0.1内容，原因未证实；立即停止该次复制并只读核实两份均完整，未强制覆盖。核对Move-Item为原生命令后，后续单步移动、确认源目录不存在、创建空安装目录、独占复制与19项SHA校验完成。没有收到执行策略拒绝、没有策略绕过或删除备份。最终安装 `%LOCALAPPDATA%/addToolBox/Modules/addtoolbox.background-remover` 是已验证的0.2.0，Host实测发现版本一致；这不是正式Update UI或安装器。
+
+### 17.8 构建、证据与尚未验证
+
+实际关键命令如下，Host solution与独立Module分开。所有最终build均 **0 warnings / 0 errors**；无新增测试框架，没有将临时集成探针冒充全仓库dotnet test。
+
+```powershell
+# P1干净断点之前：0 warnings / 0 errors，8文件单独提交并push。
+dotnet build .\AddToolBox.sln --artifacts-path .\artifacts\background-v02-production\p1-closeout-host-build
+# 独立Module Release和最终Package均0 / 0。
+dotnet build .\modules\AddToolBox.BackgroundRemover\AddToolBox.BackgroundRemover.csproj -c Release --no-restore --artifacts-path .\artifacts\background-v02-production\engine-build
+.\modules\AddToolBox.BackgroundRemover\tools\package.ps1 -BuildRoot .\artifacts\background-v02-production\engine-build -OutputDirectory .\artifacts\background-v02-production\package-0.2.0-rc1
+# 模型/CPU/GPU独立工程与真实DLL探针；每项实际执行于不同结果目录。
+dotnet build .\artifacts\background-v02-production\runtime-gate\RuntimeGate.csproj -c Release
+dotnet build .\artifacts\background-v02-production\engine-check\EngineCheck.csproj -c Release
+& .\artifacts\background-v02-production\engine-check\bin\Release\net10.0-windows\win-x64\EngineCheck.exe <repo> cpu-production
+& .\artifacts\background-v02-production\engine-check\bin\Release\net10.0-windows\win-x64\EngineCheck.exe <repo> gpu-production
+# Host集成探针：checks / gpu100 / cpu16 / failure / stop / gpu30-off / gpu30-on，顺序运行。
+dotnet build .\artifacts\background-v02-production\host-integration\HostIntegration.csproj -c Release --no-restore --artifacts-path .\artifacts\background-v02-production\integration-build
+& .\artifacts\background-v02-production\integration-build\bin\HostIntegration\release\HostIntegration.exe <repo> <job> <unique-result-label>
+.\dev-assets\background-removal-testset\prepare-testset.ps1 -VerifyOnly
+# 最终五项目Host solution：0 warnings / 0 errors。
+dotnet build .\AddToolBox.sln --artifacts-path .\artifacts\background-v02-production\final-host-build
+git diff --check
+git status --short
+```
+
+原始测量：前置Gate两份JSONL，生产Engine CPU/GPU JSONL，质量初始与2图修正目录，`input-color-probe/`，`host-integration-results/`七个最终job、失败开发日志，package build日志与19项部署清单。最终审计只读取已有结果及核对包，不运行推理。所有源/模型/日志均留在对应ignored artifacts，没有BEN2补测、A危险DML重跑、驱动/系统依赖变更或V0.2 Git写操作。
+
+剩余边界：Owner尚未做V0.2完整鼠标/拖放/Resize/UI人工验收；Auto故障重试与强制GPU后端失败未安全注入；低显存/其他设备、长时间大批次和所有读写权限/磁盘耗尽情形未实机覆盖。CPU约3.89秒仍未达到3.5秒理想目标。现有Host的缓存View无Hot Unload/正式Update UI，已按现有契约保留。以上不通过隐藏fallback、增加第三方依赖或改Host/SDK规避。
+
+### 17.9 Owner人工验收清单
+
+完成自动工作后启动空闲addToolBox，停止自动操作；所有者确认前V0.2不提交、不推送。
+
+1. 选择一张人物图片。
+2. 拖入一张图片。
+3. Auto模式处理。
+4. GPU模式处理。
+5. CPU模式处理。
+6. 查看去背景结果。
+7. 保存PNG。
+8. 检查桌面路径。
+9. 重名保存自动编号且不覆盖。
+10. 多选10张以上图片。
+11. 拖入多个文件。
+12. 拖入文件夹，确认递归收集。
+13. 查看Batch进度。
+14. 查看当前原图Preview。
+15. 查看最近成功Result Preview。
+16. 检查桌面新批次文件夹。
+17. 确认逐项自动保存。
+18. 停止批次。
+19. 停止后重新处理。
+20. 性能面板默认关闭。
+21. 打开后右上Card位置合适。
+22. CPU数据更新。
+23. 内存数据更新。
+24. 当前耗时更新。
+25. 平均吞吐更新。
+26. 关闭后Card消失。
+27. 控件数量仍简洁。
+28. 页面与预览没有被挤变形。
+29. Resize正常。
+30. Back返回Host正常。
+
+## 18. V0.2.1 Batch Preview and Edge Correction
+
+### 18.1 状态与范围
+
+2026-09-03：**Uncommitted / awaiting owner acceptance**。第17节保留V0.2原始验证快照；本节记录其后的缩略图与边缘修正。只改5个生产文件：模组Engine、View XAML、View code-behind、module.json及package.ps1；同步5份相关说明。没有改变Host、Core、SDK、MainWindow、World Canvas、治理规则、模型、依赖、Batch执行架构或性能面板。版本号和打包默认输出改为0.2.1。
+
+### 18.2 批量缩略图
+
+根因是V0.2多图选择分支主动清空原图且没有列表。现在多图路径收集完成即显示底部横向列表，并默认加载第一项主预览；各项显示缩略图、截断文件名和等待/处理中/成功/失败。处理中项自动滚入可见区域、高亮并同步原图；点击其他项可查看该项原图，下一处理项开始时继续跟随。结果区仍显示最近成功结果，不保留整批全尺寸结果集合。坏图显示明确的预览失败占位，处理失败独立标记。
+
+缩略图长边最多160，选择主预览长边最多1280；冻结位图、关闭输入流、单一异步解码任务、虚拟化回收列表和32项缓存淘汰阈值。JPEG/PNG使用WIC解码尺寸；其他编解码器可能先解码再缩放，不能把160像素保留尺寸说成所有格式的解码峰值上限。批次结束释放不可见缓存，切换文件集、返回单张或View卸载清空缓存；快速点选丢弃旧预览请求的结果。
+
+首次1000条UI压力检查发现虚拟化回收时Loaded/Unloaded不能可靠代表可见项：4个实际容器对应34个陈旧可见条目。一次修正改为以实际生成容器及视口相交为依据，原断言不变，复测4个容器/13张缓存通过；失败日志保留。1000条仅为UI投影，**没有1000张真实推理**。
+
+### 18.3 白边诊断与修正
+
+现有PNG保留原图RGB，仅用预测Alpha替换透明度，半透明边缘中的亮背景混色因此进入导出文件。独立深色合成可复现发白。WPF的256级Alpha探针对比标准合成公式，最大通道差1/255，未发现预乘Alpha错误；没有修改预览合成器。参考：[Pbgra32预乘定义](https://learn.microsoft.com/en-us/dotnet/api/system.windows.media.pixelformats.pbgra32?view=windowsdesktop-10.0)、[BitmapImage解码尺寸](https://learn.microsoft.com/en-us/dotnet/api/system.windows.media.imaging.bitmapimage.decodepixelwidth?view=windowsdesktop-10.0)。
+
+Engine在构造透明结果前默认执行保守RGB去污染，仅考虑Alpha 5–249的边缘。要求附近同时存在近不透明前景和近透明的中性亮背景，且边缘颜色符合两者的混色方向；保护亮色前景和输入自带透明度的像素。去污染强度受估算混色比例、Alpha及每通道最多32/255限制。**Alpha完全不变，不收缩蒙版，不新增开关**；同一结果供预览和PNG保存，因此两者同时受益。
+
+真实C#方法处理6份既有PNG的检查如下，全部Alpha逐字节一致、近不透明区域不变、无RGB增亮、最大通道降低32。这里复用旧推理结果，只运行本次后处理。
+
+| case id | RGB改变像素数 |
+| --- | ---: |
+| portrait-normal | 0 |
+| portrait-short-hair | 4123 |
+| hair-fine | 35 |
+| backlight-hair | 6003 |
+| thin-structure | 21456 |
+| transparent-hard-case | 2851 |
+
+合成白底污染样例的前景颜色误差总和由62400降至59328；输入透明像素保护断言通过。深色背景前后图包括[短发人像](../artifacts/background-v021/edge-results/portrait-short-hair-dark-comparison.jpg)及[逆光人像](../artifacts/background-v021/edge-results/backlight-hair-dark-comparison.jpg)，全图与变化最多处局部均明确标注。观察到部分亮边减轻，仍有残留；像素改变数量不代表质量评分，也不能据此认定所有亮边均为错误。
+
+### 18.4 自动验证与交付边界
+
+实际执行：
+
+```powershell
+dotnet run --project .\artifacts\background-v021\preview-probe\PreviewProbe.csproj -c Release
+dotnet run --project .\artifacts\background-v021\edge-check\EdgeCheck.csproj -c Release -- (Get-Location).Path
+dotnet build .\artifacts\background-v021\ui-check\UiCheck.csproj -c Release --no-restore --artifacts-path .\artifacts\background-v021\ui-build
+& .\artifacts\background-v021\ui-build\bin\UiCheck\release\UiCheck.exe <repo> auto <module-build-output> ui-results-fixed
+.\modules\AddToolBox.BackgroundRemover\tools\package.ps1 -BuildRoot .\artifacts\background-v021\module-build -OutputDirectory .\artifacts\background-v021\package-0.2.1
+dotnet build .\AddToolBox.sln --artifacts-path .\artifacts\background-v021\host-build
+git diff --check
+git status --short
+```
+
+Solution、独立Module及UI探针最终build均 **0 warnings / 0 errors**。没有新增测试框架，没有运行全仓库dotnet test。实际使用现有Host的LoadedModule加载器，在仓库内独立验收窗口装载真实模组DLL：8张选择立即有列表与默认预览，点击切换、160/1280尺寸检查通过；1000条虚拟化投影不创建推理Session。单张实际处理、预览、桌面PNG保存及旧文件hash不变通过；批次8张正常图加1张坏图得到8成功/1失败、8份PNG和1行失败记录，观察到8个当前项高亮和匹配的原图预览。批次结束缓存4张，切回单张缓存为0。总计 **9次真实推理**，不是无推理验证。原始记录：`artifacts/background-v021/ui-results-fixed/events.jsonl`。
+
+最终Package `artifacts/background-v021/package-0.2.1/`：19文件、236719039 bytes；模型仍为Static BiRefNet，199681624 bytes，SHA-256 `50a57872cc739192446da2a934159f957c81af8b5a161dfda8e3daa51660ca67`。没有额外模型、SDK私有副本、PDB或测试数据进入包。本轮不修改仓库外的已安装0.2.0目录，提供仓库内0.2.1验收窗口；这不是已安装Host升级或Owner人工验收通过。
+
+最终包另通过实际Windows文件对话框多选8张图片，观察到默认原图及横向缩略图；实际点击逆光缩略图后，主预览与选择一致。此阶段没有再次推理，保留“去背景 V0.2.1 · 模组验收”窗口供Owner操作。以上是代理执行的UI检查，不是Owner人工验收。
+
+限制：保守修正不能消除宽范围白雾，也可能跳过无可靠前景/背景参照的细发丝；自然逆光与亮色细节仍需Owner确认。真实鼠标拖放、其他设备和长时间大批量未在本轮覆盖。没有BEN2补测、模型切换、Git暂存、提交或推送。
+
+## 19. V0.2.1 Edge Quality Refinement
+
+### 19.1 本轮起点、调用链与范围
+
+2026-09-03，**Implemented / Uncommitted / awaiting owner quality acceptance**。Owner确认缩略图基本可用，授权继续补齐Alpha与RGB边缘处理。本节替代第18节RGB-only方法作为当前质量行为；第18节仍保留当时测试事实，不能把当时的“Alpha不变”当成本轮行为。
+
+起点分支main，HEAD `ba199c72dd18e7d5e5e2f6e7c01a7c1253fb5bed`；已有13个修改文件、5个未跟踪文件，均为前轮开发内容。完整逐文件起点SHA和Git状态保存在 `artifacts/background-v021-edge/start-state.json`。本轮仅2个生产文件：修改 `BackgroundRemovalEngine.cs`、新增 `EdgeRefinement.cs`；同步CHANGELOG、PROJECT_HISTORY、本Reference、根README和模组README。未改View、BatchRemoval、ImageFiles、Performance、manifest、csproj、模型/依赖、Host/Core/SDK/Infrastructure/MainWindow/World Canvas或治理文件。
+
+入口仍为BackgroundRemoverModule → BackgroundRemoverView。Single和BatchRemoval均调用Engine.Process；其内部顺序仍为预处理→一次模型Run→sigmoid与双线性Alpha回原尺寸→乘原Alpha→边缘处理→冻结BGRA结果。单图Save和Batch均经ImageFiles.SaveUnique/Engine.SavePng输出桌面，ResultPreview直接显示相同结果。性能面板仍为原有默认关闭、开启后1秒采样，未扩展。产品只有棋盘格结果预览；黑/白预览属于本轮离线验收材料，没有新增产品控件。
+
+前置检查确认前一版已有半透明边缘RGB去污染，没有Alpha精修、阈值裁切、羽化或腐蚀；只接受中性亮背景且最多减色32/255。这解释灰/彩色/暗色背景覆盖不足。当前架构文档的Module实施状态仍是历史快照，与已存在的Module代码/Reference不完全同步；本轮沿用现有Module内部职责和契约，不借质量修正改写架构。
+
+### 19.2 默认后处理
+
+不是叠加第二套旧算法：以EdgeRefinement替换旧DecontaminateEdges。输入/输出是straight BGRA，颜色推断以[Alpha合成关系](https://www.w3.org/TR/compositing-1/#simplealphacompositing)为出发点，但采用编码RGB下的局部保守启发式，不宣称物理正确matting。
+
+- 仅考察Alpha 5–249；在有上限4–12px半径的8方向搜索中，要求近不透明前景（Alpha≥250）、近透明背景（≤4）、足够颜色差异，以及当前边缘符合两者混色方向。颜色不一致或没有可靠参照时保留。
+- Alpha：当混色估计提示覆盖度偏高，轻微下降，浮点上限为min(6, 0.06×Alpha)，最后8bit舍入，最大实际下降6。相对两侧邻居更高的局部Alpha峰值保留；不清除任何原非零Alpha像素，不扩展背景、不做整体腐蚀、模糊或羽化。因量化舍入，低Alpha的相对百分比可略高于6%，不能宣称逐像素严格≤6%。
+- RGB：沿局部背景到前景方向做有正负号的校正，每通道最多48/255，可处理白/灰/彩色/黑色混色；不统一扣白，不改近不透明主体。源图自带Alpha<255的像素不参与边缘调整；最终Alpha=0的隐藏RGB统一清零。
+- 先租用一个byte/像素的不可变Alpha快照，所有邻域从快照读取，前景/背景参照RGB在采样过程中不改，最后清零透明RGB；避免扫描方向传播。ArrayPool在finally归还，无第二次推理、无每像素对象、无批量并行。池可能暂时保留已租用容量，不声称归还后WorkingSet立即归零。
+
+一次生产实现即通过本轮边界与功能检查，没有修改测试预期迎合实现。临时测量程序最初未保留LoadedModule强引用，导致ALC卸载后依赖加载失败，发生在首个模型Run输入转换阶段；修正探针生命周期后通过，未改Host或生产加载器。该失败日志保留，不计成功推理。
+
+### 19.3 九类质量对照
+
+为隔离后处理，使用原图编码RGB与既有P1 B Alpha，分别调用上一版真实DLL的RGB-only方法和本轮真实DLL的EdgeRefinement。两边使用同一Alpha，不重跑模型来制造差异。P1与生产Alpha此前核实最大差1/255；本次固定Alpha对照不能等同于逐图重新推理的质量打分。真实功能/性能推理另列。
+
+每例保存before/after全尺寸透明PNG、纯黑/纯白对照图。图中包含全图与按预乘颜色变化量选出的3个256px局部，选区规则明确标注；不是只展示有利裁剪。所有RGBA数值检查、18张黑白对比图及PNG本体已检查。索引：[`comparisons/index.html`](../artifacts/background-v021-edge/comparisons/index.html)，全尺寸文件在 `quality/before/`、`quality/after/`。
+
+| 真实case id | Alpha改变像素 | 可见RGB改变像素（相对上一版） | 代理观察，非Owner验收 |
+| --- | ---: | ---: | --- |
+| portrait-normal | 3581 | 5005 | 头发外缘及衣肩局部灰边轻微减轻，整体变化小 |
+| hair-fine | 25844 | 37343 | 衣袖/裤边较易观察，复杂卷发改善有限 |
+| portrait-long-hair | 22822 | 37120 | 发顶和肩部轮廓灰边有所减轻，宽雾状残留仍在 |
+| backlight-hair | 14115 | 24859 | 边缘略干净，自然金色亮边保留；逆光仍困难 |
+| animal-fur | 861 | 1178 | 耳缘局部变化很小，绒毛发脏改善有限 |
+| product-hard-edge | 29735 | 62649 | 相机挂环/硬边外侧薄灰边小幅减轻，高光与残留仍在 |
+| product-white-background | 45311 | 70330 | 项链局部灰轮廓减轻，反射与原有残留仍在 |
+| thin-structure | 68891 | 151216 | 辐条周围污染有减轻，原有断续/锯齿没有恢复 |
+| transparent-hard-case | 6148 | 8320 | 轮廓局部修正，透明语义及内区黑白残留没有解决 |
+
+九图全部：Alpha下降≤6、原非零Alpha支撑集合逐像素不变、不透明区域逐字节不变、最终Alpha=0的RGB全为0。源图既有透明度保护由合成夹具单独验证，不能把JPEG透明困难样本称为源Alpha保护测试。已知白/灰/彩/黑混色夹具的前景RGB误差分别由24000→15840、8240→4400、13500→8040、12020→6560，均有Alpha微调；Alpha为1/24/100/240的单像素孤立细线全部保持。像素变化数、夹具误差不等于主观质量评分。
+
+### 19.4 配对性能与稳定性
+
+RTX4060 Laptop，同一固定6图performanceSet轮转。每组新进程和Session，GPU 1 cold+10 warm、CPU 1 cold+5 warm；推理与后处理来自生产RemovalResult计时。Total为Engine.Process，含初始化（仅cold）、预处理、Run与后处理，**不含文件解码/保存/UI**。
+
+| 路径 | GPU before | GPU after | CPU before | CPU after |
+| --- | ---: | ---: | ---: | ---: |
+| Cold Run ms | 550.096 | 545.300 | 4273.661 | 4273.069 |
+| Cold Total ms | 5015.371 | 4977.237 | 7094.260 | 7142.507 |
+| Warm Run median ms | 426.582 | 424.540 | 4258.832 | 4239.066 |
+| Warm Postprocess median ms | 136.597 | 149.893 | 160.551 | 166.581 |
+| Warm Total median ms | 657.553 | 673.115 | 4558.872 | 4489.758 |
+| Peak WorkingSet bytes | 1767796736 | 1946742784 | 3943661568 | 4067852288 |
+| Peak Private bytes | 7687532544 | 7905402880 | 5310914560 | 5460045824 |
+
+GPU Total增加2.37%，CPU Total下降1.52%（不据单组波动宣称提速）；Postprocess中位数分别增加13.296ms和6.030ms，包含Alpha放大、边缘处理与Bitmap创建，未在生产新增更细性能面板。九图纯后处理一次调用差值约-76至+56ms，有JIT/池热身差异；配对生产总耗时更适合判断可用性。未观察明显性能倒退。
+
+GPU after WorkingSet在图像轮转中约1.09→1.61→1.79→1.69…→1.93→1.73GB，有回落；CPU after约2.11→3.94→4.07→3.92→3.94→3.89GB。新增池化快照和GC时机带来有限额外占用，本次没有随张数明显线性增长证据；短样本不能证明长期无泄漏。Dispose后GPU/CPU WS约953/540MB，GPU DXGI local/nonlocal均归0，测量进程正常退出。没有故障注入、其他硬件或长时间压力测试。
+
+排除的诊断组：上轮验收窗口已完成8张并保存，但仍持有GPU Session；测量时另一进程DXGI预算约2.1GB，旧版Warm Run达4045ms。检查完成状态后关闭旧窗口，释放Session，再做上述四组。资源竞争组日志在 `baseline-gpu/events.jsonl`，不混入配对统计。共54次成功真实推理：竞争诊断11、正式GPU前后22、CPU前后12、功能9；固定Alpha九图对照为0推理。
+
+### 19.5 构建、功能与交付
+
+实际命令（`<repo>`、`<package>`为本节记录的绝对路径参数）：
+
+```powershell
+dotnet build .\AddToolBox.sln
+dotnet build .\modules\AddToolBox.BackgroundRemover\AddToolBox.BackgroundRemover.csproj -c Release --artifacts-path .\artifacts\background-v021-edge\_work\module-build
+dotnet build .\artifacts\background-v021-edge\_work\probe\Probe.csproj -c Release --artifacts-path .\artifacts\background-v021-edge\_work\probe-build
+# Probe分别执行quality、clean-before/after-gpu、clean-before/after-cpu。
+& .\artifacts\background-v021-edge\_work\probe-build\bin\Probe\release\Probe.exe <repo> <package> <job>
+.\modules\AddToolBox.BackgroundRemover\tools\package.ps1 -BuildRoot .\artifacts\background-v021-edge\_work\module-build -OutputDirectory .\artifacts\background-v021-edge\package-0.2.1
+& .\artifacts\background-v021\ui-build\bin\UiCheck\release\UiCheck.exe <repo> auto <new-package> <ui-validation-folder>
+git diff --check
+git status --short
+```
+
+Solution、独立Release、临时探针及Package最终build均0 warnings / 0 errors。没有全仓库dotnet test或新增测试框架。复用已有UiCheck，以真实Host加载器加载本轮Package：单张处理/预览/桌面保存/旧文件hash不变通过；8张正常图加1张坏图批次8成功/1失败、8PNG加1行错误记录，耗时10.897秒。8个处理项高亮、状态、原图一致；1000项仅UI虚拟化保持4个容器/13张缓存、0推理；批次结束缓存4张，切回单张为0。错误记录、缩略图与保存逻辑未修改。原始证据 `ui-validation/events.jsonl`。
+
+包 `artifacts/background-v021-edge/package-0.2.1/`，19文件/236719917 bytes；Module DLL SHA256 `31e87f4125d7f70a961743a999c1bead7779ab5c7fc1aa3a9dc70c199f276c3e`。模型SHA/依赖与前轮完全相同，未联网下载模型；未升级安装目录。前后质量PNG、黑白对比、验收包及证据日志作为交付保留，前轮资料和Owner生成的桌面输出不清理。
+
+清理未完成：本轮198个临时文件、334207620 bytes已按绝对路径/大小/SHA256生成不可覆盖的 `cleanup-manifest.json`。执行删除前的命令被自动审批以 `blocked by policy` 拒绝，没有提供更具体原因，未绕过策略再次删除。四个目标仍保留：本节artifact根下 `_work/`、`ui-validation/zz-corrupt.png`，以及桌面的 `portrait-short-hair-no-bg (1).png`、`去背景_2026-09-03_143259/`。记录见 `cleanup-result.json`。自动测量与功能探针均已退出；此清理限制不等同于验证失败。
+
+尚未验证：Owner对黑/白边缘、卷发/绒毛、逆光高光、透明语义和商品硬边的主观接受度；实际鼠标拖入、其他设备、低显存故障恢复和长时间批次。保留的非零Alpha集合不能证明所有细节在感知上完全不变，也无法恢复模型已漏掉的结构。没有新增档位、第二模型、第二次生产推理、Git暂存/提交/推送或治理变更。
+
+## 20. V0.3-P0 Quality and Subject Completeness
+
+### 20.1 研究边界与模型身份
+
+2026-09-03最终状态：**DEFERRED / FUTURE QUALITY RESEARCH**。原始评分仍为PENDING OWNER REVIEW，不补填通过分数；此研究不再是当前生产计划，不启动C ONNX Export、V0.3-P1或自动研究。下文保留研究执行时的事实：起点main / HEAD `ba199c72dd18e7d5e5e2f6e7c01a7c1253fb5bed`，13个修改路径和6个未跟踪生产路径全部保留。当轮只维护CHANGELOG、PROJECT_HISTORY、本Reference；Probe、模型、隔离venv、下载缓存、输入和结果均进入gitignored `artifacts/background-v03-p0/`。未修改生产Background Remover、EdgeRefinement、UI、Host/Core/SDK、契约、依赖、模型或治理，未进行ONNX export、Batch功能或Git写操作。Owner关闭Host后才开始该轮推理。
+
+| Candidate | 来源与固定revision | SHA256 | 实际模型bytes / license |
+| --- | --- | --- | --- |
+| A 当前Lite control | `CoderViking/birefnet-lite-onnx` / `dc06453148f01ef4131f17e9b791345e32e8ee78` | `50a57872cc739192446da2a934159f957c81af8b5a161dfda8e3daa51660ca67` | 199681624 / MIT；复用生产文件，未重下载 |
+| B Matting ONNX | [emrikol/birefnet-matting-onnx](https://huggingface.co/emrikol/birefnet-matting-onnx/tree/0d58d809b3a360b44c556223d2f5812aeace9ba3) / `0d58d809b3a360b44c556223d2f5812aeace9ba3` | `f0843e38f6a4e88efc8c5fad4178ad7ed6c818346ce12f82e7b579324fe7e0c5` | 940840787 / exporter声明MIT并归属官方BiRefNet-matting |
+| C 官方HR-matting | [ZhengPeng7/BiRefNet_HR-matting](https://huggingface.co/ZhengPeng7/BiRefNet_HR-matting/tree/5d6b6f8adcb5b417c871b1d84ceaae9871355b7f) / `5d6b6f8adcb5b417c871b1d84ceaae9871355b7f` | `a5a4de698739ea5e0e8bbab28e1b293dde95092b87a442d566cbc585c53cef55` | 444473596 / 官方MIT；687个F16 tensor、67个I64 tensor |
+
+B模型卡没有披露准确的上游训练权重revision，其仓库也没有单独LICENSE文件；本轮核实其MIT声明与归属，并保存GitHub `ZhengPeng7/BiRefNet` revision `ebcc0bc8ec7fe919cec829f2dea656b3078acddc` 的MIT文本。不把这些记录等同于独立复现export数值等价性。实际图为IR8、opset16、PyTorch2.12.0导出、32453节点、300个GridSample，无外部tensor文件；输入输出均FLOAT，分别`[1,3,1024,1024]`与`[1,1,1024,1024]`，输出端为Conv logits。
+
+D [RMBG-2.0](https://huggingface.co/briaai/RMBG-2.0)官方访问需要账号/接受条款，按允许分支跳过；模型卡license字段为`bria-rmbg-2.0`并说明非商用开放，不作为可自由商用生产候选。没有上传图片、准备D集成或重跑BEN2。元数据、固定README、源代码与SHA证据见本地`sources/`。
+
+### 20.2 固定困难集与方法
+
+8个真实case id：`subject-completeness-hard`、`animal-fur`、`hair-fine`、`backlight-hair`、`portrait-long-hair`、`thin-structure`、`transparent-hard-case`、`product-hard-edge`。木箱是460×460 Owner local regression sample，SHA256 `d8def6b117e980b167ffe03b201e5cde6d39ebfc57e45865d4c382e9917754c4`；原图不进入Git。其余7张复用P1固定测试集，来源、许可、尺寸和逐图SHA在`hard-set.json`。
+
+A/B使用完全相同的保存输入tensor：编码RGB、PIL抗锯齿bilinear到1024、ImageNet normalization、NCHW FP32。使用现有ORT1.24.4 / DirectML device0、Sequential / ALL、GPU MemoryPattern关闭、默认CPU Arena；没有新增生产依赖。输出stable sigmoid、bilinear回原尺寸、乘原Alpha。A另调用只读链接的当前EdgeRefinement，`results/A-raw/`保存其前置对照；B是原RGB与原始Matting Alpha。不同后处理约定明确标注，未为候选另调参数。
+
+C实际执行其官方模型卡2048×2048 FP16流程；官方的ToPILImage量化再resize与A/B顺序不同，不静默改成同一流程。`bb_pretrained=false`、本地safetensors、离线缓存，官方代码不修改；不执行会引用另一模型与前景颜色估计器的handler。使用仓库内venv的PyTorch2.5.1+cu121 / torchvision0.20.1+cu121、timm1.0.12、transformers4.46.3、kornia0.7.4，完整版本见`sources/C-env-freeze.txt`，pip check通过；没有向系统Python安装包。
+
+### 20.3 A/B质量发现与性能门
+
+以下为代理对实际输出的定性检查，不是Owner评分或验收：
+
+| 样本 | 实际发现 |
+| --- | --- |
+| 木箱 | A在底部箱体左侧顶面挖洞；B恢复该区域。所选`(94,261)-(111,281)`不透明区域A/A-raw平均Alpha 0.49255、45.882%低于0.5；B平均1.0、0%低于0.5。各正面/扣件及右顶面保留。A/B顶部均有背景纸张残留，B更宽。ROI不是完整GT mask。 |
+| 猫毛 / 卷发 | B部分胡须/卷发分离不同，仍有发雾和灰/绿原背景污染；不能宣布全部毛发质量通过。 |
+| 逆光 | B减少手臂与躯干间亮背景；1:1放大时，A/B均大量损失飞发，B平滑亮边并未形成明确发丝/halo改善。 |
+| 细结构 | 主车架保留；B一些前轮辐条更弱，两者都不能保证细线完整。 |
+| 透明 | 都保留玻璃球与部分倒影；Alpha连续不等于物理透明正确或折射背景已移除。没有GT，不作透明质量通过结论。 |
+| 长发 / 相机 | 主体整体近似；剩余柔边、污染和小结构需要Owner逐图确认。 |
+
+初看整图时准备了B GPU/CPU benchmark job；随后1:1检查否定逆光质量门，**两个job未执行**。`B-quality-gate-final.json`取代整图阶段的暂定判断。只报告8图质量运行实测，不将其描述为10-warm稳定性测试或CPU后备验证。
+
+| Candidate | 实际质量Run | Init | Cold | 7 warm median | Peak WS | Private Bytes | DXGI local |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| A | 8/8完成 | 4.3598s | 0.4983s | 0.3508s | 1.305GB | 7.214GB | 5.962GB |
+| B | 8/8完成 | 8.1946s | 21.8827s | 20.1342s | 9.351GB | 13.974GB | 11.513GB |
+
+均为模型Run，不含解码、全尺寸后处理、PNG或UI；GB为十进制。本机RTX4060 Laptop 8188MiB / driver610.88，concurrency1。DXGI local是进程记账，不是11.5GB全部物理驻留；B运行预算约6.4–6.9GB，存在资源压力，但未用驻留trace证明唯一根因，也未逐节点确认provider placement。没有后端调参、精度转换或自动fallback。B明显超1.5s目标，未追加GPU 1+10 / CPU 1+3；CPU后备为INCONCLUSIVE，未虚构15s超时。
+
+### 20.4 C状态、体积与后续边界
+
+C完成8/8张质量图，恢复所选木箱左侧顶面，ROI平均Alpha=1.0、低于0.5比例为0%；有更多猫耳细毛、卷发分离、逆光短飞发及前轮辐条。长飞发和halo仍缺失/残留，顶部背景纸张与车下细残留尚在。玻璃内部原黑背景更多变为透明，但淡边和倒影不等于物理透明已正确。以上为代理观察，Owner分数仍未填写。
+
+这些木箱/毛发/逆光观察支持继续小型C性能测量：
+
+| C PyTorch GPU | Load | Cold Run | Warm median | Peak WS | Private | CUDA allocated / reserved peak |
+| --- | --- | --- | --- | --- | --- | --- |
+| 首次8张质量集 | 4.3248s | 7.2704s | 2.9826s（7 warm） | 6.211GB | 14.390GB | 5.450 / 10.819GB |
+| 新进程1 cold + 5 warm | 1.3241s | 3.7623s | 2.9486s（5 warm） | 5.939GB | 14.389GB | 5.450 / 10.819GB |
+
+两组均完成、结果finite。Cold为新进程/模型首Run，不是重启或清空OS/驱动缓存；reserved为PyTorch allocator缓存计数，不是10.819GB全部驻留于8GB显卡，亦不与DXGI local直接等同。没有改allocator/驱动策略。此为官方PyTorch/CUDA速度，**未来ONNX速度、资源、体积与CPU后备均未验证**。
+
+现有包19文件236719917 bytes；仅将199681624-byte A替为940840787-byte B，文件和将为977879080 bytes，约977.88MB / 1GB级，增加741.16MB，约现有4.13倍。未实际制作该包，不预测压缩率。C权重本身已经FP16，444.47MB并不代表未来ONNX或最终包体积。
+
+两阶段只分析：完整图像是当前官方/固定模型的输入约定；局部crop能否保持语义需实验，可能损失尺度和上下文。把crop仍放大到固定1024并不会自动降低B单次图计算，多crop还会增加调用。C代码明确融合全尺寸/半尺寸backbone与decoder输入图信息。uncertain edge band可能遗漏被确信判为背景的真实主体，不能预先保证恢复木箱缺失；没有“两阶段更快”结论或实现。
+
+原研究A在新增主体完整性门下为REJECTED（仅此研究门）；B作为当前硬件默认替换为REJECTED，木箱恢复是PROMISING证据；C为PROMISING候选，生产集成未获批准；D商用生产资格为REJECTED，非质量评分。Owner最终接受Lite现阶段限制并冻结V0.2.1，保留A作为生产模型（即P1中的B Static）。原建议的C单模型ONNX可行性方向正式Deferred，不启动export或两阶段实验。**Future research不等于current production plan。**
+
+### 20.5 验收材料与验证
+
+本地完整报告：`artifacts/background-v03-p0/REPORT.md`；联系表入口`comparisons/index.html`，逐图`<case>-black/dark/white.jpg`；透明PNG为`results/<candidate>/<case>.png`，均原始分辨率，另有全尺寸背景合成与`comparisons/details/`像素放大图。`owner-review-template.csv`六个质量字段全部PENDING OWNER REVIEW。Owner所述Adobe/remove.bg效果未提供结果文件，本轮未独立复测。
+
+实际命令：
+
+```powershell
+dotnet build .\AddToolBox.sln --artifacts-path .\artifacts\background-v03-p0\host-build
+dotnet build .\artifacts\background-v03-p0\probe\ModelProbe.csproj -c Release --artifacts-path .\artifacts\background-v03-p0\build
+& .\artifacts\background-v03-p0\build\bin\ModelProbe\release\ModelProbe.exe .\artifacts\background-v03-p0\A-quality.json
+& .\artifacts\background-v03-p0\build\bin\ModelProbe\release\ModelProbe.exe .\artifacts\background-v03-p0\B-quality.json
+& .\artifacts\background-v03-p0\venv\Scripts\python.exe .\artifacts\background-v03-p0\c_infer.py quality
+& .\artifacts\background-v03-p0\venv\Scripts\python.exe .\artifacts\background-v03-p0\c_infer.py benchmark
+& .\artifacts\background-v03-p0\venv\Scripts\python.exe -m pip check
+& .\artifacts\background-v03-p0\venv\Scripts\python.exe .\artifacts\background-v03-p0\validate_outputs.py
+git diff --check
+git status --short
+```
+
+Solution与研究Probe build均0 warnings / 0 errors。Solution是5个Host项目，不含外部Module，不冒充本轮Module build或UI测试。32个PNG（A/A-raw/B/C各8）全部通过输入SHA、尺寸/RGBA、有效Alpha、原RGB与既有非零Alpha集合检查；有24张整图联系表、27张局部图、24行Owner模板，144个评分均PENDING OWNER REVIEW。起点50个仓库文件仅上述3份研究文档改变，生产源码与正式模型SHA未变，非ignored路径集合未变；研究Python/Probe进程均退出，Host未启动，暂存区为空。证据为本地`output-validation.json`、`final-state.json`与`git-status-short.txt`。没有全仓库dotnet test或人工验收通过结论。研究代码与依赖仅在ignored artifacts，不提交或推送。
+
+## 21. V0.2.1 Frozen Production Baseline
+
+### 21.1 Owner最终决定与范围
+
+2026-09-03：**FROZEN / ACCEPTED WITH KNOWN LIMITATIONS**。来源是Owner本次Finalization请求：当前速度可接受，Batch缩略图符合预期，EdgeRefinement相比之前的白边/灰雾/部分污染有改善，开销低，接受已知质量限制并结束当前阶段研究。不是逐图满分、完美抠图或专业服务等价认证。
+
+起点main / HEAD与live origin main均为`ba199c72dd18e7d5e5e2f6e7c01a7c1253fb5bed`，13 modified + 6 untracked，合计19个授权Git eligible文件。冻结收口只进一步同步5份文档（CHANGELOG、根README、PROJECT_HISTORY、本Reference、模组README），不调整生产实现。待归档的完整生产里程碑共19文件（12生产/构建文件、7文档），使用Owner指定的单个`feat: enhance background remover v0.2.1`提交，不预填自身Hash；不创建Tag或GitHub Release。起点逐文件SHA记录在`artifacts/background-v021-final/start-state.json`。
+
+**SDK / Host / Core / MainWindow / World Canvas / Module System / 治理修改均为NO**。既有架构文档的旧实施状态快照不在本轮改写；现有模块内业务职责与公共契约不变。研究代码、图片、模型、日志和构建产物不进入Commit。
+
+### 21.2 冻结能力
+
+| 能力 | 最终状态与证据边界 |
+| --- | --- |
+| Model | **KEEP MODEL / KEEP STATIC EXPORT**；P1候选B Static BiRefNet Lite即V0.3研究control A。唯一生产模型为CoderViking/birefnet-lite-onnx，revision `dc06453148f01ef4131f17e9b791345e32e8ee78`，199681624 bytes，SHA256 `50a57872cc739192446da2a934159f957c81af8b5a161dfda8e3daa51660ca67`。 |
+| Single | PNG/JPEG/BMP选择/拖放、原图与结果预览；点击“保存PNG”直接写桌面，重名安全编号。单张不在推理结束后自行保存；自动逐项保存属于Batch。 |
+| Batch | 多选、多个文件/递归文件夹拖入，等待/处理中/成功/失败，当前项高亮与主预览跟随、点击缩略图导航；一次一图顺序执行，桌面时间戳目录、错误隔离、失败日志、Stop不启动后续项。 |
+| Image lifetime | 不全量预解码、不保留全批结果、不并发Inference；可见项160px缩略图、1280px点击预览、32项缓存淘汰阈值，切换/结束/卸载按现有逻辑释放缓存。 |
+| Backend | Auto / GPU / CPU，DML device0，concurrency=1；lazy initialization、Session reuse、空闲切换释放Session。Auto故障明确提示并一次CPU恢复，强制GPU后端失败停止；故障分支仍为静态检查，未安全注入设备失败。 |
+| Performance | 默认OFF且无采样Timer；ON每1秒采样CPU/Working Set，显示当前耗时、平均吞吐和批次进度。没有扩展面板或新增控件。 |
+| EdgeRefinement | 默认始终启用，Single/Batch共用Engine结果，预览和PNG均受益。Alpha最大调整量、阈值、半径、RGB规则和保护逻辑全部保持第19节实现，未调参。 |
+
+### 21.3 既有测量保留，不重跑Benchmark
+
+| 既有验证 | 已验证数据 | 来源 |
+| --- | --- | --- |
+| V0.2生产Engine GPU | warm Run median **289.281ms**，10/10 warm成功（约0.3秒级） | 第17.3节、`background-v02-production/gpu-production/results.jsonl` |
+| V0.2生产Engine CPU | warm Run median **3892.419ms**，5/5 warm成功（约4秒级） | 第17.3节、`cpu-production/results.jsonl` |
+| V0.2.1最终边缘实现 | GPU/CPU warm Run **424.540 / 4239.066ms**，Engine Total **673.115 / 4489.758ms** | 第19.4节、`background-v021-edge/clean-after-gpu`与`clean-after-cpu` |
+| Edge增量 | 配对Postprocess median增加 **13.296ms GPU / 6.030ms CPU**；这是整体后处理差值，不是单独Edge方法绝对耗时 | 第19.4节，前后完整数据保留 |
+| Batch | GPU **100/100**、119.672秒；CPU **16/16**、81.858秒；混合坏图3失败/3成功；停止后17项不启动 | 第17.5节 |
+| 调度与缩略图 | 1000项调度/命名为0推理；V0.2.1 1000项UI投影为4容器/13缓存、结束4缓存、切单张0缓存；8正常+1坏图状态与预览检查通过 | 第17.5、18.4、19.5节 |
+| 面板ON/OFF | 同30项GPU OFF39.534955s / ON39.555293s，吞吐差 **-0.0514%**；单组无明显开销，不代表零开销 | 第17.6节 |
+
+Run时间不含解码/PNG保存/UI；Engine Total也不含文件解码/保存/UI。不同轮次的环境与图像影响数值，不能将0.3秒解释为所有图片的端到端保证。本轮只读核对已有证据，不重复100张、1000张推理或新模型测试。
+
+### 21.4 已知质量限制与研究关闭
+
+V0.2.1不是Adobe / remove.bg级专业抠图方案：发丝/动物绒毛可能保留灰雾、色边、背景污染；逆光亮边/halo/飞发有限；透明或半透明物体不能保证物理正确Alpha；极细杆线、辐条、网状结构可能局部损失。
+
+最重要的是主体完整性：当商品与背景接近、结构复杂或语义不明确时，Lite可能将真实主体判为背景。三个木箱的左顶面ROI，A-raw与A平均Alpha同为0.49255、45.882%低于0.5，说明缺失在模型原始Alpha里已存在；这是 **MODEL CAPABILITY LIMITATION**，不是EdgeRefinement Bug。后处理无法恢复已经被模型判为背景的主体。Owner报告Adobe相对完整，remove.bg也有轻微缺失但总体更好；未提供这两者结果文件，未独立复测服务或编造对比评分。
+
+V0.3-P0完整证据保留，第20节正式 **DEFERRED / FUTURE QUALITY RESEARCH**：A Lite性能最佳但木箱完整性失败；B Matting ONNX约20.13秒、940840787 bytes及资源代价不适合当前生产；C HR-Matting有木箱/毛发/细结构改善迹象，PROMISING，PyTorch/CUDA warm2.9486秒、444473596-byte权重，生产ONNX未验证。未来研究不等于当前生产计划，不继续下载/测试模型、C ONNX Export、V0.3-P1或两阶段方案。
+
+addToolBox是通用模块化工具箱。第一个Module已完成Module System、独立Package、本地模型加载、GPU/CPU、Batch、错误隔离、性能观测、固定Test Set、开发Reference和真实Owner验收的工程目标；无限追逐局部质量差异会阻塞主项目。因此 **V0.2.1 Freeze / 当前阶段CLOSED**，项目重点回到Module生态。将来若另行授权，质量工作另开`Background Remover V0.3 Quality`。本轮未开始Performance Monitor Module V0.1。
+
+### 21.5 最终Build、Package和最小Smoke
+
+Host关闭，全部使用仓库内独立输出目录；关键命令实际执行如下：
+
+```powershell
+dotnet build .\AddToolBox.sln --artifacts-path .\artifacts\background-v021-final\host-build
+dotnet build .\modules\AddToolBox.BackgroundRemover\AddToolBox.BackgroundRemover.csproj -c Release --artifacts-path .\artifacts\background-v021-final\module-build
+.\modules\AddToolBox.BackgroundRemover\tools\package.ps1 -BuildRoot .\artifacts\background-v021-final\module-build -OutputDirectory .\artifacts\background-v021-final\package-0.2.1
+.\artifacts\background-v021-final\verify-package.ps1
+dotnet build .\artifacts\background-v021-final\smoke\FinalSmoke.csproj -c Release --artifacts-path .\artifacts\background-v021-final\smoke-build
+& .\artifacts\background-v021-final\smoke-build\bin\FinalSmoke\release\FinalSmoke.exe (Get-Location).Path
+git diff --check
+```
+
+Host solution（5项目）、Module Release、package脚本内部Release及临时smoke build全部 **0 warnings / 0 errors**。没有全仓库`dotnet test`、新增测试框架、系统Python/CUDA环境或依赖升级；已有依赖正常restore，不下载模型。Git可能提示LF→CRLF规范化，这与编译warning分开。
+
+最终包：`artifacts/background-v021-final/package-0.2.1/`，**19文件 / 236721555 bytes（236.721555MB）**。逐文件路径、数量、大小与SHA256对照Release输出全部一致；`package-verification.json`保留完整清单。唯一模型为上述199681624-byte B且SHA一致，manifest version=**0.2.1**。Managed ORT assembly **1.24.4.0**，native ORT **1.24.20260316.9.2d92497**，DirectML **1.15.4+241025-1615.1.dml-1.15.fac7597**。Module DLL为75264 bytes、SHA256 `096089b0ed1ba31359ae5c69bc6cf1951c266e86541d474814e514103bd20d70`。产品版本权威是manifest，未更改原有程序集默认版本策略。
+
+Package无旧A、BEN2、Matting、HR-Matting、临时FP16模型、Python、测试/私人图片、日志、PDB、LIB或私有SDK副本。旧研究与旧验收包完整保留，不清理、不绕过此前删除策略限制；它们在ignored artifacts，不影响Package或Git eligible状态。
+
+最小smoke使用**此次Host构建的真实ModuleManifest.Read / LoadedModule.Load / GetOrCreateView**从最终包加载0.2.1，验证入口契约、View缓存、默认Auto、lazy Session/输入数组、性能OFF无Timer。复用未修改的既有EdgeTests：4种白/灰/彩/暗混色、透明输入保护、Alpha支撑集合和4档孤立细线均通过。探针初次在推理前因路径分隔符字符串比较误判失败；规范化路径后原断言通过，失败日志保留，未改生产实现。
+
+普通`portrait-normal`（SHA与固定测试集一致，2050×3084）强制GPU一次、CPU一次，**共2次推理，2/2生成PNG成功**。模型Run **498.542ms GPU / 4513.509ms CPU**，均为本次后端首次运行，不能称warm benchmark。保存/重读PNG逐像素一致，原尺寸、RGBA、透明/半透明/不透明区域及Alpha=0时RGB=0通过；两文件约8.28MB，保存在`smoke-results-verified/`。切换/Dispose释放Session通过，没有Auto故障切换实测。
+
+本轮构造了真实View但没有启动Host窗口，也未模拟鼠标或重复人工UI验收；桌面保存、Batch与缩略图交互沿用上表已有自动证据及Owner最终验收。低显存/其他硬件、设备故障恢复、磁盘耗尽与长期批次仍未覆盖。后续任务不得将这两次smoke扩写为整套Benchmark或质量研究重跑。

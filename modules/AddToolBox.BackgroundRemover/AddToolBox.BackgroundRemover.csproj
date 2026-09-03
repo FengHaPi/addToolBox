@@ -7,20 +7,23 @@
     <RuntimeIdentifier>win-x64</RuntimeIdentifier>
     <PlatformTarget>x64</PlatformTarget>
     <EnableDynamicLoading>true</EnableDynamicLoading>
+    <Microsoft_AI_DirectML_SkipDebugLayerCopy>true</Microsoft_AI_DirectML_SkipDebugLayerCopy>
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\src\AddToolBox.SDK\AddToolBox.SDK.csproj">
       <Private>false</Private>
       <ExcludeAssets>runtime</ExcludeAssets>
     </ProjectReference>
-    <PackageReference Include="Microsoft.ML.OnnxRuntime" Version="1.29.0" GeneratePathProperty="true" />
+    <PackageReference Include="Microsoft.ML.OnnxRuntime.DirectML" Version="1.24.4" GeneratePathProperty="true" />
   </ItemGroup>
   <ItemGroup>
     <None Update="module.json;README.md;THIRD_PARTY_NOTICES.md;Models\README.md" CopyToOutputDirectory="PreserveNewest" />
-    <None Update="Models\*.onnx" CopyToOutputDirectory="PreserveNewest" />
-    <None Include="$(PkgMicrosoft_ML_OnnxRuntime)\LICENSE" Link="Licenses\ONNXRuntime-LICENSE.txt" CopyToOutputDirectory="PreserveNewest" />
-    <None Include="$(PkgMicrosoft_ML_OnnxRuntime)\ThirdPartyNotices.txt" Link="Licenses\ONNXRuntime-ThirdPartyNotices.txt" CopyToOutputDirectory="PreserveNewest" />
-    <!-- Transitive dependency fixed by ONNX Runtime Managed 1.29.0; not another direct package. -->
+    <None Update="Models\model.onnx" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="$(PkgMicrosoft_ML_OnnxRuntime_DirectML)\LICENSE" Link="Licenses\ONNXRuntime-LICENSE.txt" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="$(PkgMicrosoft_ML_OnnxRuntime_DirectML)\ThirdPartyNotices.txt" Link="Licenses\ONNXRuntime-ThirdPartyNotices.txt" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="$(NuGetPackageRoot)microsoft.ai.directml\1.15.4\LICENSE.txt" Link="Licenses\DirectML-LICENSE.txt" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="$(NuGetPackageRoot)microsoft.ai.directml\1.15.4\ThirdPartyNotices.txt" Link="Licenses\DirectML-ThirdPartyNotices.txt" CopyToOutputDirectory="PreserveNewest" />
+    <!-- Transitive dependency fixed by ONNX Runtime Managed 1.24.4. -->
     <None Include="$(NuGetPackageRoot)system.numerics.tensors\9.0.0\LICENSE.TXT" Link="Licenses\System.Numerics.Tensors-LICENSE.txt" CopyToOutputDirectory="PreserveNewest" />
     <None Include="$(NuGetPackageRoot)system.numerics.tensors\9.0.0\THIRD-PARTY-NOTICES.TXT" Link="Licenses\System.Numerics.Tensors-ThirdPartyNotices.txt" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>

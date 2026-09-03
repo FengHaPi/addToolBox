@@ -22,9 +22,61 @@ addToolBox 是 Windows-first、C# / .NET 10 / WPF 的本地模块化工具箱与
 
 ## 历史时间轴
 
+### 2026-09-03 — Background Remover V0.2.1 Frozen Baseline
+
+状态：**FROZEN / ACCEPTED WITH KNOWN LIMITATIONS / Owner-confirmed product decision**。Owner正式接受V0.2.1作为当前生产基线：速度可接受、Batch缩略图符合预期、EdgeRefinement对白边/灰雾/部分色污染有改善且开销低，接受当前边缘和主体完整性限制。此次收口覆盖自`ba199c7`后同一未提交生产里程碑，按授权以单个`feat: enhance background remover v0.2.1`提交；不预填自身Hash，不创建Tag或GitHub Release。以下各阶段的“未提交/等待验收”保留当时快照，当前验收状态以本节为准。
+
+产品决定 **KEEP MODEL / KEEP STATIC EXPORT**：唯一模型仍为CoderViking BiRefNet Lite，revision `dc06453148f01ef4131f17e9b791345e32e8ee78`，199681624 bytes，SHA256 `50a57872cc739192446da2a934159f957c81af8b5a161dfda8e3daa51660ca67`。Auto/GPU/CPU、DirectML、Batch、缩略图、默认OFF性能面板及默认EdgeRefinement全部保留；后处理参数与保护逻辑冻结，Host/SDK/Core不变。
+
+当前不是Adobe / remove.bg级专业抠图方案。毛发灰雾/色边、逆光halo/飞发、透明Alpha、极细结构以及复杂商品主体误删仍有限制。木箱左顶面缺失在原始模型Alpha中已存在，属于 **MODEL CAPABILITY LIMITATION**，不是EdgeRefinement Bug；后处理不能恢复模型判为背景的主体。Owner观察Adobe更完整、remove.bg轻微缺失但总体更好；没有将此观察写成本地独立服务复测。
+
+V0.3-P0研究与原始证据完整保留，但正式 **DEFERRED / FUTURE QUALITY RESEARCH**。A Lite速度最佳但木箱完整性失败；B Matting约20秒、约941MB及资源代价不可接受；C HR-Matting为PROMISING、PyTorch/CUDA warm约2.95秒、约444MB，尚无生产ONNX验证。这些发现不触发C导出、V0.3-P1或下一次自动研究。
+
+停止原因：addToolBox是通用模块化工具箱，首个Module已完成Module System、独立Package、本地模型、GPU/CPU、Batch、Error isolation、Performance instrumentation、Test Set、开发Reference和真实人工验收的验证。继续无限追逐局部质量差异会阻塞主项目。当前去背景阶段 **CLOSED**，项目重点回到 **addToolBox Module ecosystem**；未来若重启质量开发，另开`Background Remover V0.3 Quality`。预定Performance Monitor Module V0.1本轮未开始。最终构建、Package和smoke见[冻结Reference](MODULE_DEVELOPMENT_REFERENCE_V1.md#21-v021-frozen-production-baseline)。
+
+### 2026-09-03 — Background Remover V0.3-P0 主体完整性研究
+
+状态：**DEFERRED / FUTURE QUALITY RESEARCH**。以下保留原研究事实与未填写的Owner评分；当前产品决定见上方Frozen Baseline。Owner提供三个木箱商品图，报告当前Lite误删主体，研究时要求优先级改为主体完整性、matte/毛发、细结构、稳定性，再考虑速度和体积。此发现不推翻P1当时固定样本的定性替换验收，也不把后续发现倒写为此前已知；研究没有修改生产代码、EdgeRefinement、依赖、模型、Host或SDK。
+
+固定8张Hard Set复用当前Lite为A，验证941 MB FP32 Matting ONNX为B。A的木箱左侧顶面缺口在原始模型Alpha中已经存在，既有边缘处理未恢复；所选不透明区域45.882%像素Alpha低于0.5，B降至0%，三块正面和金属扣均保留。B同时保留较多顶部背景纸张，逆光1:1发丝仍缺失，部分自行车辐条更弱，不能以单个木箱改善宣布通用质量通过。A/B各8次质量推理完成；B GPU warm median约20.134秒、WS 9.351 GB / Private 13.974 GB / DXGI local 11.513 GB，后者不是物理显存驻留量。放大检查未满足木箱、毛发、逆光全部质量门槛，因此不追加B GPU/CPU benchmark，CPU后备仍未验证。
+
+C官方HR-matting固定revision与444.47 MB FP16 safetensors已核验，在仓库内隔离PyTorch2.5.1/CUDA12.1环境完成8图质量推理。木箱缺口恢复，猫耳细毛、部分逆光短飞发及前轮辐条比B更完整；长飞发、灰雾、纸张/细背景残留和透明语义仍未解决。小型1 cold + 5 warm测试6/6，warm median 2.9486秒，WS峰值5.939 GB、Private 14.389 GB、CUDA allocated 5.450 GB / reserved 10.819 GB；缓存计数不等于物理驻留，也不等于未来ONNX速度。C为PROMISING研究候选，原研究建议的ONNX可行性方向现已Deferred，不进入当前生产计划。
+
+D因官方权重需要账号/接受条款而跳过，并非可自由商用候选；BEN2未重跑。所有主观评分留为PENDING OWNER REVIEW，原图、透明PNG、黑/灰/白对照、放大图、日志及Owner模板均只保留在ignored artifacts。两阶段Lite→uncertain edge→Matting仅作可行性分析：固定分辨率裁剪不自动减少单次模型计算，也可能遗漏置信度很高的错误背景区域，因此不作为优先下一步。细节和最终验证见[本轮Reference](MODULE_DEVELOPMENT_REFERENCE_V1.md#20-v03-p0-quality-and-subject-completeness)。
+
+### 2026-09-03 — Background Remover V0.2.1 边缘质量继续修正
+
+状态：**Implemented / Uncommitted / 等待Owner人工质量验收**。Owner确认多图缩略图基本可用，本轮优先质量；前一版只允许中性亮背景RGB修正且不改Alpha，覆盖不了灰/色/暗背景污染。单图与Batch已经共用Engine，因此无需修改Host契约或重写Batch。实际仅调整Engine并新增模组内EdgeRefinement，替换旧RGB-only方法；没有增加用户质量档位、模型、依赖或第二次推理。
+
+在有近不透明前景、近透明背景和颜色混合一致性证据的Alpha 5–249带内，轻微降低被颜色证据判为偏高的Alpha，最多6/255；局部Alpha峰值保留，所有非零Alpha像素不被清除。不透明主体及输入已有非零透明度的像素保持不变。RGB沿局部背景到前景方向校正，每通道最多48/255，采样结束后将Alpha=0的RGB清零。使用单个池化Alpha快照保持邻域读取稳定，复杂度随像素数线性、搜索半径有上限。
+
+九类现有样本的黑/白背景及全尺寸PNG前后对照中，项链、细结构、部分长发轮廓改善较易观察，普通人像/相机局部小幅改善；绒毛、复杂卷发改善有限，逆光及透明困难仍存在。没有主观高分或Owner通过结论。真实配对测量GPU 1 cold + 10 warm、CPU 1 cold + 5 warm：Engine warm总耗时中位数0.658→0.673秒和4.559→4.490秒；后处理单独计时有小幅增加。先前验收窗口保留Session导致GPU预算竞争的诊断组被明确排除，释放旧窗口后重新配对；不把资源竞争数据当回归。详细样本、数值和验证/清理证据见[本轮Reference](MODULE_DEVELOPMENT_REFERENCE_V1.md#19-v021-edge-quality-refinement)。安装目录保留0.2.0，本轮交付仓库内验收包，不提交或推送。
+
+### 2026-09-03 — Background Remover V0.2.1 批量预览与边缘修正
+
+状态：**Implemented / Uncommitted / 自动检查通过，等待Owner人工验收**。所有者反馈速度基本可接受，但多图选择后原图区域为空、深色背景下部分边缘仍发白。按本轮授权仅修改5个模组生产文件：View XAML/代码、Engine、manifest和package脚本；不更换模型/依赖，不改Host/SDK/Core/MainWindow/World Canvas或性能面板，也不重写Batch。
+
+空白来自V0.2多图分支主动清空OriginalPreview且没有条目视图。新增原图区域内的横向虚拟缩略图条，当前项高亮、逐项状态、点击预览；160px可见项缩略图和1280px点击预览均有界加载。压力检查发现WPF容器回收后按Loaded/Unloaded维护的可见集合会残留，改以当前生成容器和视口作为依据；最终1000项仅4个容器、13张缓存、0推理，批次结束仅4张缓存，切到单张后清空。
+
+白边诊断区分了合成与像素：WPF 256档Alpha深色合成误差最大1/255，没有发现预乘错误；现有导出PNG已含亮色半透明边缘。原流程仅预测Alpha并保留原RGB，不能自动移除RGB里混入的原背景色。按本轮新增授权，在半透明边缘有邻近不透明前景、近透明浅色背景和颜色混合一致性证据时保守减色，RGB每通道最多32/255，Alpha不变；预览和保存共用同一结果。六图Alpha/不透明区域均未改变，短发人像部分亮边减轻；并非完整matting或保证所有发丝/耳饰无色差。原有透明输入像素受保护，宽雾状残留仍可能存在。
+
+实际自动处理9次：单张1次并保存，8张批处理成功加1张坏图失败，高亮/状态/主预览一致；单张重名保存不覆盖。原始证据与限制见 [V0.2.1 Reference](MODULE_DEVELOPMENT_REFERENCE_V1.md#18-v021-batch-preview-and-edge-correction)。本轮通过仓库内验收程序调用现有Host加载器加载0.2.1，未覆盖用户安装目录；V0.2安装与备份保留。没有人工验收结论或Git提交/推送。
+
+### 2026-09-03 — Background Remover V0.2 Production Integration
+
+状态：**Implemented / Uncommitted / 等待所有者人工 UI 验收；不是 Release**。先以 `ba199c7` 独立封存并推送 P1，确认干净断点，再按所有者明确批准的范围修改去背景模组。Host、SDK、Core、UI、Infrastructure、World Canvas、MainWindow 和治理文件均未修改；模型、测试输入和原始日志仍在忽略目录。
+
+采用已通过定性替换验收的 B Static BiRefNet FP32 导出，固定 revision `dc06453148f01ef4131f17e9b791345e32e8ee78`、SHA256 `50a57872cc739192446da2a934159f957c81af8b5a161dfda8e3daa51660ca67`、199681624 bytes。选择单一 DirectML 1.24.4 发行包同时提供 CPU / DML EP，配套 Managed 1.24.4 和 DirectML 1.15.4，避免两个 native ORT 版本并存。新运行时 CPU warm median 3.892秒，未达3.5秒理想目标但未触发4秒停止线；GPU warm median 0.289秒，10/10 warm成功。资源口径与前置 Runtime Gate 分开记录于 [V0.2 Reference](MODULE_DEVELOPMENT_REFERENCE_V1.md#17-v02-production-integration)。
+
+质量回归确认输入约定也是替换的一部分：P1 使用抗锯齿 bilinear 和未做 ICC 转换的编码 RGB；WPF 默认色彩转换会改变普通人物和商品输入。通过只读像素/张量诊断确认原因后，模组使用同样的 resize 与 IgnoreColorProfile，六类输入张量逐位一致，生产 CPU 与 P1 B PNG 的 RGB 相同、Alpha 最大差1/255。没有加入阈值、羽化、边缘清理或新图像库，也没有重新研究 A/BEN2；这项数值回归不代替 V0.2 产品人工验收。
+
+新增单 worker 顺序批处理、路径去重/排序、逐项自动保存与错误隔离；一次只解码/处理当前图片，预览更新被 await，不积压 Bitmap。Auto 在 GPU 后端失败时释放旧 Session、明确提示、当前项 CPU 重试一次并保持 CPU；强制 GPU 后端失败停止批次。右上仅新增设备选择和性能按钮；OFF 不创建采样定时器，ON 每秒采样。单张与批量使用桌面固定输出和不覆盖命名。100张真实GPU批次100/100、119.672秒、peak WS2.396GB；CPU16/16、81.858秒；坏图3失败/3成功；停止后17项未启动，随后2项重启成功。1000项压力只做调度/路径/命名，明确0次推理。
+
+V1 导入不支持重复 ID 更新；按本轮明确授权关闭 Host，保留逐文件 SHA 验证的 V0.1 备份，再将完整 V0.2 Package 做 development-only 本地部署，未修改导入规则。19文件共236705882 bytes，仅B模型、单一ORT与必要DML依赖；包与安装副本逐项一致。最终构建、性能面板对照、自动探针与证据目录见 Reference。设备故障没有安全注入接口，按任务允许条件跳过故障模拟；不把正常GPU/显式CPU通过写成fallback故障路径已验证。低显存设备与更长时间运行尚未验证。V0.2保持未提交、未推送，启动空闲Host交由所有者执行30项人工检查；Fast Path和独立Performance Monitor Module仍未开始。
+
 ### 2026-09-03 — Background Remover V0.2-P1 模型与导出比较
 
-状态：**Research / Owner visual acceptance PASSED（2026-09-03）；收口记录 Uncommitted，待独立提交**。P0 三份文档先独立提交推送为 `635bb60`，核实干净工作树后才开始 P1。研究只使用已有 ONNX Runtime 版本与隔离 artifacts，不改生产 Module、模型、Host、SDK、依赖或安装包。
+状态：**Research / Owner visual acceptance PASSED（2026-09-03）；收口已独立提交并推送**。P1 提交为 `ba199c72dd18e7d5e5e2f6e7c01a7c1253fb5bed docs: establish background removal model benchmark`，Commit Date **2026-09-03 05:42:58 +08:00**。只包含获批的 8 个文档/测试集定义文件；提交后 HEAD、origin/main 与远端 main 一致、工作树干净，再进入 V0.2。P0 三份文档此前独立提交推送为 `635bb60`。P1 研究使用隔离 artifacts，不包含后续生产 Module、模型、Host、SDK、依赖或安装包变更。
 
 方向性证据：A/B 都是静态外部输入 `[1,3,1024,1024]`，并非简单把动态输入固定。B 的 GridSample 导出将节点数 16400→6129，GatherND/ScatterND 80/72→0/0；同一 CPU 1.29.0、相同生产预处理合成输入下，peak WS 12.566→3.473 GB，warm median 5.956→2.621秒。B DML 在 RTX4060 Laptop 上 10/10 成功，warm median 0.323秒，peak WS 1.302 GB / Private 7.214 GB / DXGI local 5.962 GB。这支持导出及执行结构对资源代价有重要影响，不证明某一算子是唯一根因，不把低工作集称作泄漏已修复；GPU资源仍非“只有1.3GB”。
 

@@ -1,17 +1,18 @@
 # Third-party notices
 
-## Microsoft ONNX Runtime 1.29.0
+## Microsoft ONNX Runtime 1.24.4 / DirectML 1.15.4
 
-The module distributes the CPU runtime from Microsoft.ML.OnnxRuntime and its managed dependency. Copyright (c) Microsoft Corporation. MIT license: <https://github.com/microsoft/onnxruntime/blob/rel-1.29.0/LICENSE>. Upstream third-party notices: <https://github.com/microsoft/onnxruntime/blob/rel-1.29.0/ThirdPartyNotices.txt>.
+The module distributes one Microsoft.ML.OnnxRuntime.DirectML 1.24.4 runtime (CPU EP and DML EP) and Managed 1.24.4. Copyright (c) Microsoft Corporation. MIT license: <https://github.com/microsoft/onnxruntime/blob/rel-1.24.4/LICENSE>. Its necessary Microsoft.AI.DirectML 1.15.4 redistributable has Microsoft's separate license; the package includes DirectML-LICENSE.txt and DirectML-ThirdPartyNotices.txt in Licenses/. It is not described as MIT merely because ONNX Runtime is MIT.
 
 ## BiRefNet Lite ONNX model
 
-The ONNX Runtime Managed 1.29.0 package transitively includes System.Numerics.Tensors 9.0.0 (MIT, .NET Foundation and Contributors). Its license and third-party notices are also copied into `Licenses/`; it is not an additional direct dependency.
+The ONNX Runtime Managed 1.24.4 package transitively includes System.Numerics.Tensors 9.0.0 (MIT, .NET Foundation and Contributors). Its license and third-party notices are also copied into `Licenses/`; it is not an additional direct dependency.
 
-- Model: BiRefNet_lite-ONNX; repository: <https://huggingface.co/onnx-community/BiRefNet_lite-ONNX>.
+- Model: BiRefNet Lite; export: <https://huggingface.co/CoderViking/birefnet-lite-onnx/tree/dc06453148f01ef4131f17e9b791345e32e8ee78>.
 - Base: ZhengPeng7/BiRefNet_lite, <https://huggingface.co/ZhengPeng7/BiRefNet_lite>.
-- Source file: `onnx/model.onnx`; local package: `Models/model.onnx`.
-- SHA256: `5600024376f572a557870a5eb0afb1e5961636bef4e1e22132025467d0f03333`.
+- Source file: `birefnet-lite-1024.onnx`; local package: `Models/model.onnx`; 199681624 bytes.
+- Revision: `dc06453148f01ef4131f17e9b791345e32e8ee78`.
+- SHA256: `50a57872cc739192446da2a934159f957c81af8b5a161dfda8e3daa51660ca67`.
 - License: MIT, as declared by the upstream model repositories. This model was not trained by addToolBox.
 - BiRefNet project and license: <https://github.com/ZhengPeng7/BiRefNet>.
 
