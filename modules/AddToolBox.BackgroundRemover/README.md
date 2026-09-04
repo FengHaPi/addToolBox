@@ -21,7 +21,27 @@ Run the model preparation script explicitly. Build and package never download mo
     dotnet build .\AddToolBox.BackgroundRemover.csproj -c Release --no-restore --artifacts-path <build-root>
     .\tools\package.ps1 -BuildRoot <build-root> -OutputDirectory <new-package-folder>
 
-Preparation pins revision and verifies SHA256 and bytes. An existing mismatched model is left untouched. Preserve the old model in a separate development backup before an explicitly approved replacement. The package script requires the verified model, builds Release without restore, refuses an existing destination, verifies each copy and excludes PDB/import libraries. Import the resulting complete folder, not the source folder or an individual DLL.
+Preparation pins revision and verifies SHA256 and bytes. An existing mismatched model is left untouched. Preserve the old model in a separate development backup before an explicitly approved replacement. The package script uses PowerShell 7 and built-in .NET compression, requires the verified model, builds Release without restore, and accepts only the module's explicit release file list. PDB/import libraries are excluded; unexpected assets fail packaging.
+
+### Single-file distribution (.atbmod)
+
+**Packaging Support: IMPLEMENTED. Host .atbmod Import: NOT YET IMPLEMENTED.** The transport file is a standard ZIP archive with an `.atbmod` extension. The folder package remains the development artifact for inspection, diffing and local loading; `.atbmod` is the distribution artifact. The future user-facing goal is receiving one file, but the current Host still accepts complete folders only.
+
+From the repository root, after explicitly restoring/building the module for the chosen build root:
+
+    .\modules\AddToolBox.BackgroundRemover\tools\package.ps1 -BuildRoot .\artifacts\background-remover-package\module-build -OutputDirectory .\artifacts\background-remover-package\package-0.2.1
+
+The script retains the staging folder and creates these siblings in its parent directory:
+
+- `AddToolBox.BackgroundRemover-0.2.1.atbmod`
+- `AddToolBox.BackgroundRemover-0.2.1.atbmod.sha256` containing `<sha256>  <archive filename>`
+- `roundtrip/`, a retained extraction for file-by-file verification
+
+All four output paths must be unused. Existing output is never overwritten or deleted; reruns use a fresh parent directory. Failure preserves partial artifacts for diagnosis and does not report success or produce a checksum before validation completes.
+
+`module.json` and the entry DLL are at archive root, without a wrapper folder. Paths use `/`, entries are written in ordinal order with `CompressionLevel.Optimal`, and all entries use the fixed ZIP timestamp `2000-01-01 00:00:00` (created with UTC offset zero). The archive is reopened to check paths, duplicates, the exact release file set, manifest and every entry's size/SHA, including the model's decompressed bytes. Roundtrip extraction must match staging paths, count, sizes and hashes. Stable order/timestamps support repeatability for identical content in the same compression environment; this does not promise identical builds across SDK or compression runtime versions.
+
+Runtime layout, manifest SSOT, SDK ABI and loading remain unchanged. Native dependencies stay in their existing locations; this package currently has root-level native DLLs and no `runtimes/` subfolder. Nothing loads directly from ZIP. The container is not a sandbox or signature: installed modules still run with the Host's user permissions and process boundary. Only import trusted modules. No installed directory is changed by packaging.
 
 Module id, display name, kind and V1 entry contract are unchanged; manifest version is 0.2.1. The only host reference remains SDK with private runtime output excluded. This module is outside the Host solution. V1 import rejects a duplicate ID; it has no update UI. Development replacement requires closing Host and preserving a verified backup of the installed module folder. Do not change Host to bypass this rule.
 

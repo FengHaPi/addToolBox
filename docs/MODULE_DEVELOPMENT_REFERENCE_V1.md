@@ -4,6 +4,8 @@
 
 第1–13节保留V0.1验收快照，第14–16节保留后端与模型研究，第17–19节保留V0.2/V0.2.1实施与验证快照，第20节为 **DEFERRED / FUTURE QUALITY RESEARCH**。当前生产状态为 **V0.2.1 FROZEN / ACCEPTED WITH KNOWN LIMITATIONS**，见第21节。旧阶段的“未提交/等待验收/尚未实现”仅描述当时状态，不覆盖Owner最终产品决定。
 
+第22节记录随后新增的`.atbmod`单文件运输打包；它不改变上述冻结功能或Module Runtime Contract，Host直接导入仍未实现。
+
 本文件是经验与证据，不是新的 SDK 规范。正式契约见 [MODULE_FORMAT_V1](MODULE_FORMAT_V1.md) 与 `IAddToolBoxModuleV1`；项目架构权威仍为 [ARCHITECTURE](../ARCHITECTURE.md)。开发下一个 Module 前先阅读本文件，并复制末尾 Checklist。
 
 ## 1. 状态与证据边界
@@ -1176,3 +1178,62 @@ Package无旧A、BEN2、Matting、HR-Matting、临时FP16模型、Python、测�
 普通`portrait-normal`（SHA与固定测试集一致，2050×3084）强制GPU一次、CPU一次，**共2次推理，2/2生成PNG成功**。模型Run **498.542ms GPU / 4513.509ms CPU**，均为本次后端首次运行，不能称warm benchmark。保存/重读PNG逐像素一致，原尺寸、RGBA、透明/半透明/不透明区域及Alpha=0时RGB=0通过；两文件约8.28MB，保存在`smoke-results-verified/`。切换/Dispose释放Session通过，没有Auto故障切换实测。
 
 本轮构造了真实View但没有启动Host窗口，也未模拟鼠标或重复人工UI验收；桌面保存、Batch与缩略图交互沿用上表已有自动证据及Owner最终验收。低显存/其他硬件、设备故障恢复、磁盘耗尽与长期批次仍未覆盖。后续任务不得将这两次smoke扩写为整套Benchmark或质量研究重跑。
+
+## 22. .atbmod Transport Packaging V0.1
+
+### 22.1 状态、范围和开发工作流
+
+2026-09-04：**Implemented / Uncommitted / 等待Owner确认单文件交付**。起点`main`，HEAD与本地origin/main均为`087adcd3dab099cf092c2275ef72fbd260b07665 feat: enhance background remover v0.2.1`，Git工作树干净。本轮仅修改一个生产/构建文件`modules/AddToolBox.BackgroundRemover/tools/package.ps1`，同步模组README、CHANGELOG、PROJECT_HISTORY、MODULE_FORMAT及本Reference。不修改Host/SDK/Core/Infrastructure/UI、加载器、安装目录、运行时契约、模组功能、模型、EdgeRefinement或依赖。
+
+**Packaging Support: IMPLEMENTED；Host .atbmod Import: NOT YET IMPLEMENTED。** `.atbmod`是标准ZIP运输容器，Folder package保留为开发产物，`.atbmod`作为分发产物。当前Host仍只接受完整文件夹，不能直接选择`.atbmod`安装；不从ZIP内部加载DLL。运输格式不提供签名、权限限制或沙箱，模组仍与Host共享用户权限和进程边界，module.json仍是元数据SSOT。
+
+继续使用原有`-BuildRoot`与`-OutputDirectory`参数；PowerShell 7运行脚本，先为相同BuildRoot明确restore。脚本保留Release构建（不restore、不下载模型）和新建staging，随后在staging的父目录生成`.atbmod`、`.atbmod.sha256`及`roundtrip/`。所有输出必须不存在；冲突明确失败，不覆盖或删除旧包，失败产物保留供诊断。Archive SHA sidecar在校验完成后写入。
+
+### 22.2 Archive规则和实际内容
+
+使用.NET `System.IO.Compression.ZipArchive`、`CompressionLevel.Optimal`，相对路径先按Ordinal排序，ZIP分隔符为`/`，所有Entry固定为`2000-01-01 00:00:00`（设置时UTC offset=0），不带当前构建时间；ZIP时间字段本身不保存时区。不新增NuGet或依赖7-Zip/WinRAR。
+
+严格按当前19个正式文件的白名单收集：module.json、入口DLL/deps/runtimeconfig、ORT和Tensors managed DLL、3个native DLL、唯一Models/model.onnx、说明和许可证。native DLL延续根目录布局，当前包没有`runtimes/`目录，不人为增加空目录。PDB/LIB不进入分发，其他未知文件明确拒绝；无日志、临时文件、测试/私人图片、研究模型、Python、旧A或额外SDK副本。
+
+写入后重新打开Archive，校验Entry非空、root module.json、路径无重复/Windows大小写别名、无绝对路径/盘符/反斜线/空段/`.`/`..`、无外层目录，且与白名单和Ordinal顺序一致。逐Entry检查长度、固定时间戳和解压字节SHA，模型必须符合冻结SHA；严格校验7个manifest字符串字段，拒绝未知、重复、遗漏或变化的字段。全部Archive校验通过后才提取到新roundtrip目录，以CreateNew写文件并核对目标路径包含关系；解压结果与staging的相对路径集合、数量、每文件大小/SHA全部一致。
+
+### 22.3 本次交付与压缩结果
+
+所有路径位于gitignored `artifacts/background-remover-package/`：
+
+| 项目 | 实测结果 |
+| --- | --- |
+| Staging | `package-0.2.1/`，**19文件 / 236723974 bytes（236.723974MB）** |
+| Archive | `AddToolBox.BackgroundRemover-0.2.1.atbmod`，**180494728 bytes（180.494728MB）** |
+| Compression ratio | Archive / staging = **0.7624691532（76.246915%）** |
+| 节省 | **56229246 bytes / 56.229246MB / 23.753085%**；MB采用十进制 |
+| Archive SHA256 | `1eaa44c400137208144c282a84d5f33a840994e80132f63fb255dbb01ebf2750` |
+| SHA文件 | `AddToolBox.BackgroundRemover-0.2.1.atbmod.sha256`，内容为小写SHA、两个空格、Archive文件名 |
+| Manifest | root `module.json`；schemaVersion=`addtoolbox-module-v1`，id=`addtoolbox.background-remover`，version=`0.2.1`，kind=`tool`，入口/显示名保持冻结值 |
+| 模型 | Archive解压字节与roundtrip文件均为199681624 bytes，SHA256 `50a57872cc739192446da2a934159f957c81af8b5a161dfda8e3daa51660ca67` |
+| Roundtrip | `roundtrip/`，**19文件；与staging逐文件大小/SHA 100%一致** |
+| Reproducible archive | **PASS**：连续两次执行脚本，共用相同BuildRoot，第二次输出到`repro/package-0.2.1/`；两个Archive大小和SHA完全一致，第二次也完成完整Roundtrip。 |
+
+两次都在同一机器、PowerShell 7.6.5和相同SDK/压缩运行时环境下执行，未改变输入内容。PASS不保证跨SDK、压缩库版本或不同构建路径产生相同DLL字节。相对第21节旧包多出的2419 bytes来自本次模组README运输说明；运行代码和依赖未调整。固定时间戳消除Archive Entry当前时间变化，不能消除所有上游编译输入差异。
+
+### 22.4 实际验证与限制
+
+关键命令均实际执行：
+
+```powershell
+dotnet build .\AddToolBox.sln --artifacts-path .\artifacts\background-remover-package\host-build
+dotnet build .\modules\AddToolBox.BackgroundRemover\AddToolBox.BackgroundRemover.csproj -c Release --artifacts-path .\artifacts\background-remover-package\module-build
+.\modules\AddToolBox.BackgroundRemover\tools\package.ps1 -BuildRoot .\artifacts\background-remover-package\module-build -OutputDirectory .\artifacts\background-remover-package\package-0.2.1
+.\modules\AddToolBox.BackgroundRemover\tools\package.ps1 -BuildRoot .\artifacts\background-remover-package\module-build -OutputDirectory .\artifacts\background-remover-package\repro\package-0.2.1
+dotnet build .\artifacts\background-remover-package\loader-smoke\LoaderSmoke.csproj -c Release --artifacts-path .\artifacts\background-remover-package\loader-build
+& .\artifacts\background-remover-package\loader-build\bin\LoaderSmoke\release\LoaderSmoke.exe .\artifacts\background-remover-package\roundtrip
+git diff --check
+git diff --stat
+git status --short
+```
+
+Host solution、独立Module Release、两次打包内部Release及临时loader smoke build均 **0 warnings / 0 errors**。PowerShell语法解析通过。真实本次Host构建的ModuleManifest.Read / LoadedModule.Load / GetOrCreateView成功加载Roundtrip包，识别0.2.1、构造并缓存实际View，Session未创建、性能Timer为空；**0次推理、未展示Host窗口、未修改安装目录**。这验证提取后的既有加载契约，不是Host原生`.atbmod`导入测试或新的人工验收。
+
+原始证据：`host-build.log`、`module-build.log`、`package-run-1.log`、`package-run-2.log`、`loader-build.log`、`loader-smoke.log`；包、SHA sidecar、两套staging和roundtrip均保留。未新增测试框架或运行全仓库dotnet test，未重跑质量/性能研究。所有产物均ignored，不加入Git，不Commit/Push。
+
+下一步仅等待Owner确认单文件存在及交付形式符合预期。Host `.atbmod` Import、安装器、签名/分发渠道及Performance Monitor Module均未在本轮开始；需要后续单独授权。

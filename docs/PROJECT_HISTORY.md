@@ -22,6 +22,14 @@ addToolBox 是 Windows-first、C# / .NET 10 / WPF 的本地模块化工具箱与
 
 ## 历史时间轴
 
+### 2026-09-04 — Background Remover .atbmod Transport Packaging V0.1
+
+状态：**Implemented / Uncommitted / 等待Owner确认单文件交付**。从已提交的`087adcd3dab099cf092c2275ef72fbd260b07665 feat: enhance background remover v0.2.1`干净基线开始，Owner决定模组发行/传输从Folder-only迈向标准ZIP容器的`.atbmod`，同时保留文件夹包供开发检查和加载。当前仅Background Remover打包脚本落地，未实现Host `.atbmod`导入或安装器。
+
+采用.NET自带ZipArchive，不加第三方依赖；根目录直接包含module.json，保留原相对布局；固定顺序/时间戳，生成SHA sidecar，重新读取Archive并逐文件校验解压Roundtrip。正式模型、EdgeRefinement、模组功能、SDK ABI、Host loader、Module Runtime Contract与安装目录均不变。容器只是运输格式，不改变同进程权限与安全边界，也不是安全沙箱或签名。
+
+单文件目标是简化分发，不能提前描述为用户已能直接在Host导入。实际体积、压缩率、SHA及可重复构建/加载验证见[Reference第22节](MODULE_DEVELOPMENT_REFERENCE_V1.md#22-atbmod-transport-packaging-v01)。本轮不Commit/Push、不覆盖已安装模组、不开始Host Import或第二个Module。
+
 ### 2026-09-03 — Background Remover V0.2.1 Frozen Baseline
 
 状态：**FROZEN / ACCEPTED WITH KNOWN LIMITATIONS / Owner-confirmed product decision**。Owner正式接受V0.2.1作为当前生产基线：速度可接受、Batch缩略图符合预期、EdgeRefinement对白边/灰雾/部分色污染有改善且开销低，接受当前边缘和主体完整性限制。此次收口覆盖自`ba199c7`后同一未提交生产里程碑，按授权以单个`feat: enhance background remover v0.2.1`提交；不预填自身Hash，不创建Tag或GitHub Release。以下各阶段的“未提交/等待验收”保留当时快照，当前验收状态以本节为准。

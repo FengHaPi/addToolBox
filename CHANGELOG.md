@@ -15,6 +15,7 @@
 
 ### Added
 
+- Background Remover单文件发行打包（2026-09-04，Uncommitted）：`package.ps1`保留开发文件夹包，并生成标准ZIP容器的`AddToolBox.BackgroundRemover-0.2.1.atbmod`与SHA文件；固定Entry顺序/时间戳、正式文件白名单、Archive内模型校验及完整Roundtrip比对。**Packaging Support: IMPLEMENTED；Host .atbmod Import: NOT YET IMPLEMENTED**。模组功能、运行时契约及安装布局不变。
 - Background Remover V0.2：多选/拖入文件与递归文件夹、顺序批处理与停止、桌面批次文件夹自动保存、单项错误隔离和 UTF-8 失败记录；仅保留路径列表、当前输入和最近成功结果。
 - Background Remover V0.2：Auto / GPU / CPU，单一 ONNX Runtime DirectML 1.24.4 同时提供 CPU 与 DML 后端；首次处理才创建 Session，空闲切换释放旧 Session。Auto 后端失败明确提示并转 CPU，强制 GPU 后端失败停止批次。
 - Background Remover V0.2：默认关闭的轻量性能面板，开启时每秒采样进程 CPU 与 Working Set；关闭后无采样定时器。只新增右上设备下拉和性能按钮，预览布局不移动。

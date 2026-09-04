@@ -56,3 +56,15 @@ Import warning:
 AssemblyLoadContext is **not a sandbox**. Host and module share process permissions, resources and native-crash risk. Recoverable loading exceptions can be reported; arbitrary malicious code, process exit, unhandled module callbacks or native crashes are not isolated by ALC. Only trusted modules may be imported.
 
 One entry per module. No store, updates, signatures, permission model, dependency version resolver, widget/window contract, hot reload/uninstall UI, or layout persistence. Views and heavy sessions remain cached until process exit; memory lifecycle changes require future measured design work.
+
+## Distribution Container / Transport Packaging
+
+Owner direction recorded on 2026-09-04: `.atbmod` is a ZIP-compatible transport container for module distribution. Background Remover packaging support is **IMPLEMENTED**; Host `.atbmod` import is **NOT YET IMPLEMENTED**. This section adds transport packaging only and does not change Runtime Format V1 semantics.
+
+An archive carries the complete folder package's relative file layout. `module.json` and the entry assembly are at archive root, with no `package-<version>/` or module-name wrapper directory. Entry paths use `/`, must be relative, and cannot be empty, duplicated (including Windows case aliases), contain a drive/absolute path or traverse via `..`. The existing resource/native dependency layout is preserved; a `runtimes/` directory is included only when the actual folder package uses one.
+
+The Background Remover writer uses .NET `System.IO.Compression.ZipArchive`, `CompressionLevel.Optimal`, ordinal entry order and a fixed legal ZIP timestamp. It validates the explicit release asset list and model hash, reopens the container, then compares retained staging and extracted roundtrip files by path, count, size and SHA256. A separate `.atbmod.sha256` file describes the archive bytes. SHA verification detects content changes but does not establish publisher identity or trust.
+
+Folder package = development artifact; `.atbmod` = distribution artifact. Runtime layout remains unchanged after extraction. `module.json` remains the SSOT. The transport container does not change Module Contract, SDK ABI, runtime permissions or the security boundary. Assemblies are not loaded directly from ZIP; existing AssemblyLoadContext / AssemblyDependencyResolver behavior is unchanged.
+
+The current Host still imports a complete folder and has no `.atbmod` picker, installer or update flow. Packaging does not copy into `%LOCALAPPDATA%\addToolBox\Modules\<id>` or overwrite installed modules. An archive is not a security sandbox: module code still runs in the Host process with the current user's permissions. Future direct single-file import requires a separate authorized task.
